@@ -78,4 +78,4 @@ async def stop(ctx):
 
 # ⚠️ เอา Token ของคุณมาใส่ตรงนี้แทนข้อความด้านล่าง
 import os
-bot.run(os.getenv("MTIwOTMxOTU3MjIzNTA5MTk4OA.GCvb37.hBUCBcnTUjg6sR9QxyNahjGu8ITqZUyrSRAEBI"))
+bot.run(os.getenv('DISCORD_TOKEN'))
