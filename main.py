@@ -1,3 +1,4 @@
+
 import nextcord
 from nextcord.ext import commands
 import base64, codecs
@@ -35,33 +36,55 @@ intents.voice_states = True
 
 bot = commands.Bot(command_prefix='!', intents=intents, help_command=None)
 
-# 📍 โค้ดส่วนไอดีเซิร์ฟเวอร์ของคุณ
+# ไอดีเซิร์ฟเวอร์ของคุณ
 BotSever1 = 1204647300870311986 
 BotSever2 = 1468565605836918846
 
-# 📍 โค้ดส่วน Event: เมื่อบอทออนไลน์สำเร็จ (เซ็ตสถานะปุ่มม่วง)
+# Event: เมื่อบอทออนไลน์สำเร็จ
 @bot.event
 async def on_ready():
     await bot.change_presence(activity=nextcord.Streaming(name="Phakaphop", url="https://www.twitch.tv/..."))
     print('Bot is ready.')
 
-# 📍 โค้ดส่วน Event: ตรวจจับคนเปิดสตรีมในห้องเสียง
-@bot.event
-async def on_voice_state_update(member, before, after):
-    if after.channel and after.self_stream:
-        # บรรทัดนี้จะแจ้งเตือนในหน้า Log ของ Railway เวลาที่มีคนเริ่มเปิดสตรีมจอในห้องเสียงครับ
-        print(f'{member.name} is in {after.channel.name}')
+# ==================================================
+# 🚀 โซนคำสั่งสำหรับพิมพ์คุยใน Discord
+# ==================================================
 
-# ==================================================
-# 🚀 โซนคำสั่งสำหรับทดสอบพิมพ์คุยใน Discord
-# ==================================================
+# 1. คำสั่ง !ping
 @bot.command()
 async def ping(ctx):
     await ctx.send("บอทออนไลน์และพร้อมรับคำสั่งแล้วครับ! 🚀")
 
+# 2. คำสั่ง !hello
 @bot.command()
 async def hello(ctx):
     await ctx.send(f"สวัสดีครับคุณ {ctx.author.name} ! 😊")
+
+
+# 🛠️ 3. คำสั่งพิมพ์เพื่อเช็กคนเปิดสตรีมจอ (พิมพ์คำสั่ง !check)
+@bot.command()
+async def check(ctx):
+    # รวมไอดีเซิร์ฟเวอร์ที่เราจะไปดึงข้อมูล
+    server_ids = [BotSever1, BotSever2]
+    streaming_users = []
+
+    # วนลูปเช็กข้อมูลในเซิร์ฟเวอร์ที่บอทอยู่
+    for server_id in server_ids:
+        guild = bot.get_guild(server_id)
+        if guild:
+            # ค้นหาสมาชิกทุกคนที่อยู่ในห้องเสียงของเซิร์ฟเวอร์นั้น ๆ
+            for voice_channel in guild.voice_channels:
+                for member in voice_channel.members:
+                    # เช็กว่าสมาชิกคนนั้นเปิดสตรีมจอ (Share Screen) อยู่หรือไม่
+                    if member.voice and member.voice.self_stream:
+                        streaming_users.append(f"• **{member.name}** กำลังเปิดสตรีมจออยู่ในห้อง [ {voice_channel.name} ] ของเซิร์ฟเวอร์ *{guild.name}*")
+
+    # สรุปผลลัพธ์และส่งข้อความตอบกลับเข้าดิสคอร์ด
+    if streaming_users:
+        result_text = "🎥 **รายชื่อคนที่กำลังเปิดสตรีมจออยู่ ณ ตอนนี้:**\n" + "\n".join(streaming_users)
+        await ctx.send(result_text)
+    else:
+        await ctx.send("💤 ตอนนี้ไม่มีใครเปิดสตรีมจอในห้องเสียงเลยครับ")
 
 # ==================================================
 # 🛑 สั่งรันระบบทั้งหมด
