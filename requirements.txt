@@ -2,3 +2,4 @@ nextcord
 python-dotenv
 flask
 yt-dlp
+PyNaCl
