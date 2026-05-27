@@ -8,10 +8,10 @@ from dotenv import load_dotenv  # <-- เพิ่มบรรทัดนี้
 # โหลดค่าจากไฟล์ .env
 load_dotenv()  # <-- เพิ่มบรรทัดนี้
 
-intents = nextcord.Intents.default()
-intents.message_content = True
-intents.voice_states = True
-intents.all()
+intents = nextcord.Intents.all()
+intents.message_content = True  # เปิดให้อ่านข้อความเพื่อรับคำสั่ง
+intents.voice_states = True     # เปิดให้ตรวจจับระบบเสียง
+
 
 bot = commands.Bot(command_prefix='!', help_command=None) # สมมติว่าของเดิมพิมพ์ตัดไป
 
