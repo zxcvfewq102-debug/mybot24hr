@@ -16,7 +16,7 @@ intents.all()
 bot = commands.Bot(command_prefix='!', help_command=None) # สมมติว่าของเดิมพิมพ์ตัดไป
 
 BotSever1 = 1204647300870311986 
-BotSever2 = 1468565605836918846 
+BotSever2 = 1492216379120554134
 
 @bot.event
 async def on_ready():
