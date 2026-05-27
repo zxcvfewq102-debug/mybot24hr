@@ -32,3 +32,4 @@ async def on_voice_state_update(member, before, after):
 
 # 🛑 เปลี่ยนบรรทัดที่ 31 เดิม ให้เป็นเรียกใช้ตัวแปรจาก .env แบบนี้แทนครับ
 TOKEN = os.getenv('DISCORD_TOKEN')
+bot.run(TOKEN) 
