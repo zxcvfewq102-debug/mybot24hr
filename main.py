@@ -18,35 +18,48 @@ load_dotenv()
 intents = nextcord.Intents.all()
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-# --- ระบบเล่นเพลง ---
-ydl_opts = {'format': 'bestaudio/best', 'noplaylist': True}
-ffmpeg_options = {'options': '-vn'}
+ydl_opts = {'format': 'bestaudio/best', 'noplaylist': True, 'quiet': True}
+ffmpeg_options = {'options': '-vn -loglevel quiet'}
 
-@bot.command()
-async def join(ctx):
-    if ctx.author.voice:
-        channel = ctx.author.voice.channel
-        await channel.connect()
-        await ctx.send("📥 เข้าห้องแล้วครับ!")
-    else:
-        await ctx.send("❌ เข้าห้องเสียงก่อนนะครับ")
+@bot.event
+async def on_ready():
+    print(f'Logged in as {bot.user}')
 
 @bot.command()
 async def play(ctx, *, url):
+    if not ctx.author.voice:
+        return await ctx.send("❌ ต้องอยู่ในห้องเสียงก่อนครับ")
+    
+    # ถ้ายังไม่เข้าห้อง ให้เข้าห้อง
     if not ctx.voice_client:
-        await ctx.invoke(join)
+        await ctx.author.voice.channel.connect()
     
     async with ctx.typing():
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-            url2 = info['formats'][0]['url']
-            source = await nextcord.FFmpegOpusAudio.from_probe(url2, **ffmpeg_options)
-            ctx.voice_client.play(source)
-    await ctx.send(f"🎵 กำลังเล่น: {info['title']}")
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=False)
+                url2 = info['formats'][0]['url']
+                source = await nextcord.FFmpegOpusAudio.from_probe(url2, **ffmpeg_options)
+                
+                # เช็กก่อนเล่นว่าว่างไหม
+                if ctx.voice_client.is_playing():
+                    ctx.voice_client.stop()
+                
+                ctx.voice_client.play(source)
+                await ctx.send(f"🎵 กำลังเล่น: {info['title']}")
+        except Exception as e:
+            await ctx.send(f"❌ เกิดข้อผิดพลาด: {str(e)}")
+
+@bot.command()
+async def stop(ctx):
+    if ctx.voice_client:
+        ctx.voice_client.stop()
+        await ctx.send("⏹️ หยุดเล่นเพลงแล้วครับ")
 
 @bot.command()
 async def leave(ctx):
-    await ctx.voice_client.disconnect()
-    await ctx.send("📤 ออกแล้วครับ!")
+    if ctx.voice_client:
+        await ctx.voice_client.disconnect()
+        await ctx.send("📤 ออกจากห้องแล้วครับ")
 
 bot.run(os.getenv('DISCORD_TOKEN'))
