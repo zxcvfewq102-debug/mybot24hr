@@ -1,4 +1,3 @@
-
 import nextcord
 from nextcord.ext import commands
 import base64, codecs
@@ -36,7 +35,7 @@ intents.voice_states = True
 
 bot = commands.Bot(command_prefix='!', intents=intents, help_command=None)
 
-# ไอดีเซิร์ฟเวอร์ของคุณ
+# ไอดีเซิร์ฟเวอร์ของคุณ (ยังคงเก็บไว้ใช้ตามโค้ดเดิมของคุณ)
 BotSever1 = 1204647300870311986 
 BotSever2 = 1468565605836918846
 
@@ -47,7 +46,7 @@ async def on_ready():
     print('Bot is ready.')
 
 # ==================================================
-# 🚀 โซนคำสั่งสำหรับพิมพ์คุยใน Discord
+# 🚀 โซนคำสั่งสำหรับพิมพ์คุย / สั่งบอทเข้าห้องโทร
 # ==================================================
 
 # 1. คำสั่ง !ping
@@ -61,30 +60,30 @@ async def hello(ctx):
     await ctx.send(f"สวัสดีครับคุณ {ctx.author.name} ! 😊")
 
 
-# 🛠️ 3. คำสั่งพิมพ์เพื่อเช็กคนเปิดสตรีมจอ (พิมพ์คำสั่ง !check)
+# 🛠️ 3. คำสั่งสั่งให้บอทเข้าห้องโทร (ห้องเสียงที่คนพิมพ์กำลังนั่งอยู่)
 @bot.command()
-async def check(ctx):
-    # รวมไอดีเซิร์ฟเวอร์ที่เราจะไปดึงข้อมูล
-    server_ids = [BotSever1, BotSever2]
-    streaming_users = []
-
-    # วนลูปเช็กข้อมูลในเซิร์ฟเวอร์ที่บอทอยู่
-    for server_id in server_ids:
-        guild = bot.get_guild(server_id)
-        if guild:
-            # ค้นหาสมาชิกทุกคนที่อยู่ในห้องเสียงของเซิร์ฟเวอร์นั้น ๆ
-            for voice_channel in guild.voice_channels:
-                for member in voice_channel.members:
-                    # เช็กว่าสมาชิกคนนั้นเปิดสตรีมจอ (Share Screen) อยู่หรือไม่
-                    if member.voice and member.voice.self_stream:
-                        streaming_users.append(f"• **{member.name}** กำลังเปิดสตรีมจออยู่ในห้อง [ {voice_channel.name} ] ของเซิร์ฟเวอร์ *{guild.name}*")
-
-    # สรุปผลลัพธ์และส่งข้อความตอบกลับเข้าดิสคอร์ด
-    if streaming_users:
-        result_text = "🎥 **รายชื่อคนที่กำลังเปิดสตรีมจออยู่ ณ ตอนนี้:**\n" + "\n".join(streaming_users)
-        await ctx.send(result_text)
+async def join(ctx):
+    # เช็กก่อนว่า คนพิมพ์คำสั่งได้นั่งอยู่ในห้องเสียงห้องไหนไหม
+    if ctx.author.voice:
+        channel = ctx.author.voice.channel
+        # สั่งให้บอทเชื่อมต่อเข้าห้องเสียงนั้น
+        await channel.connect()
+        await ctx.send(f"📥 เข้าห้องเสียง **{channel.name}** เรียบร้อยแล้วครับ!")
     else:
-        await ctx.send("💤 ตอนนี้ไม่มีใครเปิดสตรีมจอในห้องเสียงเลยครับ")
+        # ถ้าคนพิมพ์ไม่ได้เข้าห้องเสียงอยู่ บอทจะแจ้งเตือน
+        await ctx.send("❌ คุณต้องเข้าห้องเสียง (ห้องโทร) ก่อนสั่งคำสั่งนี้ครับ!")
+
+
+# 🛠️ 4. คำสั่งสั่งให้บอทออกจากห้องโทร
+@bot.command()
+async def leave(ctx):
+    # เช็กว่าบอทได้เปิดไมค์อยู่ในห้องเสียงของเซิร์ฟเวอร์นี้ไหม
+    if ctx.voice_client:
+        # สั่งให้บอทตัดการเชื่อมต่อออกมา
+        await ctx.voice_client.disconnect()
+        await ctx.send("📤 ออกจากห้องเสียงเรียบร้อยแล้วครับ!")
+    else:
+        await ctx.send("❌ ตอนนี้ผมไม่ได้อยู่ในห้องเสียงไหนเลยครับ")
 
 # ==================================================
 # 🛑 สั่งรันระบบทั้งหมด
