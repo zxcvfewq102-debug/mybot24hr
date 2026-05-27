@@ -9,7 +9,7 @@ from threading import Thread
 # --- ระบบเปิดพอร์ต 24 ชม. ---
 app = Flask('')
 @app.route('/')
-def home(): return "Bot is running!"
+def home(): return "Bot is running 24/7!"
 def run_web(): app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 8080)))
 Thread(target=run_web).start()
 
@@ -18,12 +18,19 @@ load_dotenv()
 intents = nextcord.Intents.all()
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-ydl_opts = {'format': 'bestaudio/best', 'noplaylist': True, 'quiet': True}
+# --- ตั้งค่า yt-dlp แบบใหม่ (หลบการบล็อก) ---
+ydl_opts = {
+    'format': 'bestaudio/best',
+    'noplaylist': True,
+    'quiet': True,
+    'no_warnings': True,
+    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+}
 ffmpeg_options = {'options': '-vn -loglevel quiet'}
 
 @bot.event
 async def on_ready():
-    print(f'Logged in as {bot.user}')
+    print(f'Bot is ready: {bot.user}')
 
 @bot.command()
 async def play(ctx, *, url):
@@ -38,10 +45,10 @@ async def play(ctx, *, url):
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
-                url2 = info['formats'][0]['url']
+                # ดึง URL สำหรับสตรีมเสียง
+                url2 = info.get('url') or info.get('formats', [{}])[0].get('url')
                 source = await nextcord.FFmpegOpusAudio.from_probe(url2, **ffmpeg_options)
                 
-                # เช็กก่อนเล่นว่าว่างไหม
                 if ctx.voice_client.is_playing():
                     ctx.voice_client.stop()
                 
