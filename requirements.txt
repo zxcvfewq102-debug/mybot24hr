@@ -1,5 +1,5 @@
 nextcord
 python-dotenv
 flask
-yt-dlp>=2024.0.0
+yt-dlp --upgrade
 PyNaCl
