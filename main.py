@@ -43,15 +43,6 @@ async def on_message(message):
 async def hello(interaction: nextcord.Interaction):
     await interaction.response.send_message(f"สวัสดีครับ {interaction.user.mention}! ผมพร้อมใช้งานแล้วครับ 🤖")
 
-@bot.slash_command(name="ask", description="ถามคำถามบอท")
-async def ask(interaction: nextcord.Interaction, question: str):
-    answers = {
-        "บอททำอะไรได้บ้าง": "ฉันสามารถเล่นเพลง สั่งหยุด และเช็กอากาศได้ครับ!",
-        "ใครสร้างคุณ": "ฉันถูกสร้างขึ้นโดยคุณครับ"
-    }
-    response = answers.get(question, "ขออภัยครับ ผมไม่มีข้อมูลในระบบครับ")
-    await interaction.response.send_message(f"❓ คำถาม: {question}\n🤖 คำตอบ: {response}")
-
 @bot.slash_command(name="weather", description="เช็กสภาพอากาศ")
 async def weather(interaction: nextcord.Interaction, city: str):
     api_key = "984cc187c35afb6f1b44d39de7fb191e" 
@@ -68,8 +59,8 @@ async def weather(interaction: nextcord.Interaction, city: str):
     except Exception as e:
         await interaction.followup.send(f"❌ Error: {str(e)}")
 
-@bot.slash_command(name="play", description="เล่นเพลงจาก YouTube")
-async def play(interaction: nextcord.Interaction, url: str):
+@bot.slash_command(name="play", description="เล่นเพลงจากชื่อเพลงหรือลิงก์")
+async def play(interaction: nextcord.Interaction, search: str):
     if not interaction.user.voice:
         return await interaction.response.send_message("❌ ต้องอยู่ในห้องเสียงก่อนครับ")
     await interaction.response.defer()
@@ -77,13 +68,22 @@ async def play(interaction: nextcord.Interaction, url: str):
         if not interaction.guild.voice_client:
             await interaction.user.voice.channel.connect()
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-            url2 = info.get('url')
+            # ค้นหาเพลงจากข้อความที่พิมพ์
+            info = ydl.extract_info(f"ytsearch:{search}", download=False)
+            if 'entries' in info:
+                video = info['entries'][0]
+            else:
+                video = info
+            
+            url2 = video.get('url')
+            title = video.get('title')
             source = await nextcord.FFmpegOpusAudio.from_probe(url2, **ffmpeg_options)
+            
             if interaction.guild.voice_client.is_playing():
                 interaction.guild.voice_client.stop()
+            
             interaction.guild.voice_client.play(source)
-            await interaction.followup.send(f"🎵 กำลังเล่น: {info['title']}")
+            await interaction.followup.send(f"🎵 กำลังเล่น: {title}")
     except Exception as e:
         await interaction.followup.send(f"❌ เกิดข้อผิดพลาด: {str(e)}")
 
