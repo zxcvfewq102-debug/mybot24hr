@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from flask import Flask
 from threading import Thread
 
-# --- ระบบเปิดพอร์ต 24 ชม. ---
+# --- ระบบเปิดพอร์ต 24 ชม. สำหรับ Railway ---
 app = Flask('')
 @app.route('/')
 def home(): return "Bot is running 24/7!"
@@ -28,34 +28,23 @@ ydl_opts = {
     'noplaylist': True,
     'quiet': True,
     'no_warnings': True,
-    'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'webm', 'preferredquality': '192'}],
 }
 ffmpeg_options = {'options': '-vn -loglevel quiet'}
 
-# --- ระบบตอบโต้แชท ---
+# --- ระบบตอบโต้แชทอัตโนมัติ ---
 @bot.event
 async def on_message(message):
     if message.author == bot.user: return
-    if "สวัสดี" in message.content: await message.channel.send(f"สวัสดีครับคุณ {message.author.mention} มีอะไรให้ผมรับใช้ไหมครับ?")
-    if "ขอโปรหน่อย" in message.content: await message.channel.send(f"นี่ครับโปรของคุณ {message.author.mention} 🎁")
+    if "สวัสดี" in message.content: 
+        await message.channel.send(f"สวัสดีครับคุณ {message.author.mention} มีอะไรให้ผมรับใช้ไหมครับ?")
+    if "ขอโปรหน่อย" in message.content: 
+        await message.channel.send(f"นี่ครับโปรของคุณ {message.author.mention} 🎁")
     await bot.process_commands(message)
 
-# --- Slash Commands: สารพัดประโยชน์ ---
-@bot.slash_command(name="hello", description="ทักทายบอท")
-async def hello(interaction: nextcord.Interaction):
-    await interaction.response.send_message(f"สวัสดีครับ {interaction.user.mention}! ผมพร้อมใช้งานแล้วครับ 🤖")
-
+# --- Slash Commands ---
 @bot.slash_command(name="ping", description="เช็กความหน่วงบอท")
 async def ping(interaction: nextcord.Interaction):
     await interaction.response.send_message(f"Pong! 🏓 ({round(bot.latency * 1000)}ms)")
-
-@bot.slash_command(name="userinfo", description="ดูข้อมูลสมาชิก")
-async def userinfo(interaction: nextcord.Interaction, member: nextcord.Member = None):
-    member = member or interaction.user
-    embed = nextcord.Embed(title=f"ข้อมูลของ {member.name}", color=nextcord.Color.blue())
-    embed.add_field(name="ID", value=member.id, inline=False)
-    embed.add_field(name="วันที่เข้าเซิร์ฟเวอร์", value=member.joined_at.strftime("%d/%m/%Y"), inline=False)
-    await interaction.response.send_message(embed=embed)
 
 @bot.slash_command(name="random", description="สุ่มเลข 1-100")
 async def random_num(interaction: nextcord.Interaction):
@@ -72,14 +61,7 @@ async def weather(interaction: nextcord.Interaction, city: str):
         await interaction.followup.send(f"🌤️ อากาศที่ {response['name']}: {response['weather'][0]['description']} อุณหภูมิ {response['main']['temp']}°C")
     except Exception as e: await interaction.followup.send(f"❌ Error: {str(e)}")
 
-@bot.slash_command(name="kick", description="เตะสมาชิกออกจากเซิร์ฟเวอร์")
-async def kick(interaction: nextcord.Interaction, member: nextcord.Member, reason: str = "ไม่มีเหตุผล"):
-    if not interaction.user.guild_permissions.kick_members: return await interaction.response.send_message("❌ คุณไม่มีสิทธิ์ใช้งาน!")
-    await member.kick(reason=reason)
-    await interaction.response.send_message(f"✅ เตะ {member.name} เรียบร้อยแล้ว")
-
-# --- Slash Commands: เพลง (ระบบคิว) ---
-@bot.slash_command(name="play", description="ค้นหาและเพิ่มเพลงเข้าคิว")
+@bot.slash_command(name="play", description="เล่นเพลงจาก YouTube")
 async def play(interaction: nextcord.Interaction, search: str):
     if not interaction.user.voice: return await interaction.response.send_message("❌ ต้องเข้าห้องเสียงก่อนครับ")
     await interaction.response.defer()
@@ -101,19 +83,12 @@ async def play_next(interaction):
         await interaction.channel.send(f"🎵 กำลังเล่น: {video['title']}")
     else: await interaction.channel.send("✅ เล่นคิวจนหมดแล้วครับ")
 
-@bot.slash_command(name="skip", description="ข้ามเพลงที่เล่นอยู่")
+@bot.slash_command(name="skip", description="ข้ามเพลง")
 async def skip(interaction: nextcord.Interaction):
     if interaction.guild.voice_client:
         interaction.guild.voice_client.stop()
         await interaction.response.send_message("⏭️ ข้ามเพลงเรียบร้อย!")
     else: await interaction.response.send_message("❌ ไม่ได้เล่นเพลงอยู่ครับ")
-
-@bot.slash_command(name="stop", description="หยุดเพลง")
-async def stop(interaction: nextcord.Interaction):
-    if interaction.guild.voice_client:
-        interaction.guild.voice_client.stop()
-        await interaction.response.send_message("⏹️ หยุดเล่นเพลงแล้วครับ")
-    else: await interaction.response.send_message("❌ บอทไม่ได้อยู่ในห้องเสียงครับ")
 
 @bot.slash_command(name="leave", description="บอทออกจากห้อง")
 async def leave(interaction: nextcord.Interaction):
