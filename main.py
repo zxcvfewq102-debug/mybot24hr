@@ -16,21 +16,15 @@ Thread(target=run_web).start()
 # --- ตั้งค่าบอท ---
 load_dotenv()
 intents = nextcord.Intents.all()
-bot = commands.Bot(command_prefix='!', intents=intents)
+# ใช้ commands.Bot ตามเดิมได้ แต่เราจะใช้ slash_command แทน
+bot = commands.Bot(intents=intents)
 
-# --- ตั้งค่า yt-dlp พร้อม Cookies และตัวช่วยดึงเสียง ---
+# --- ตั้งค่า yt-dlp ---
 ydl_opts = {
     'format': 'bestaudio/best',
-    'cookiefile': 'cookies.txt',  # ต้องมีไฟล์นี้ในโฟลเดอร์บอท
     'noplaylist': True,
     'quiet': True,
-    'no_warnings': True,
-    'postprocessors': [{
-        'key': 'FFmpegExtractAudio',
-        'preferredcodec': 'webm',
-        'preferredquality': '192',
-    }],
-    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+    'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'webm', 'preferredquality': '192'}],
 }
 ffmpeg_options = {'options': '-vn -loglevel quiet'}
 
@@ -38,40 +32,46 @@ ffmpeg_options = {'options': '-vn -loglevel quiet'}
 async def on_ready():
     print(f'Bot is ready: {bot.user}')
 
-@bot.command()
-async def play(ctx, *, url):
-    if not ctx.author.voice:
-        return await ctx.send("❌ ต้องอยู่ในห้องเสียงก่อนครับ")
-    
-    if not ctx.voice_client:
-        await ctx.author.voice.channel.connect()
-    
-    async with ctx.typing():
-        try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=False)
-                # ดึง URL สำหรับสตรีมเสียง
-                url2 = info.get('url') or info.get('formats', [{}])[0].get('url')
-                source = await nextcord.FFmpegOpusAudio.from_probe(url2, **ffmpeg_options)
-                
-                if ctx.voice_client.is_playing():
-                    ctx.voice_client.stop()
-                
-                ctx.voice_client.play(source)
-                await ctx.send(f"🎵 กำลังเล่น: {info['title']}")
-        except Exception as e:
-            await ctx.send(f"❌ เกิดข้อผิดพลาด: {str(e)}")
+# --- Slash Commands ---
 
-@bot.command()
-async def stop(ctx):
-    if ctx.voice_client:
-        ctx.voice_client.stop()
-        await ctx.send("⏹️ หยุดเล่นเพลงแล้วครับ")
+@bot.slash_command(name="play", description="เล่นเพลงจาก YouTube")
+async def play(interaction: nextcord.Interaction, url: str):
+    if not interaction.user.voice:
+        return await interaction.response.send_message("❌ ต้องอยู่ในห้องเสียงก่อนครับ")
+    
+    if not interaction.guild.voice_client:
+        await interaction.user.voice.channel.connect()
+    
+    await interaction.response.defer() # ป้องกัน error กรณีใช้เวลานาน
+    
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            url2 = info.get('url')
+            source = await nextcord.FFmpegOpusAudio.from_probe(url2, **ffmpeg_options)
+            
+            if interaction.guild.voice_client.is_playing():
+                interaction.guild.voice_client.stop()
+            
+            interaction.guild.voice_client.play(source)
+            await interaction.followup.send(f"🎵 กำลังเล่น: {info['title']}")
+    except Exception as e:
+        await interaction.followup.send(f"❌ เกิดข้อผิดพลาด: {str(e)}")
 
-@bot.command()
-async def leave(ctx):
-    if ctx.voice_client:
-        await ctx.voice_client.disconnect()
-        await ctx.send("📤 ออกจากห้องแล้วครับ")
+@bot.slash_command(name="stop", description="หยุดเพลง")
+async def stop(interaction: nextcord.Interaction):
+    if interaction.guild.voice_client:
+        interaction.guild.voice_client.stop()
+        await interaction.response.send_message("⏹️ หยุดเล่นเพลงแล้วครับ")
+    else:
+        await interaction.response.send_message("❌ บอทไม่ได้อยู่ในห้องเสียงครับ")
+
+@bot.slash_command(name="leave", description="ให้บอทออกจากห้อง")
+async def leave(interaction: nextcord.Interaction):
+    if interaction.guild.voice_client:
+        await interaction.guild.voice_client.disconnect()
+        await interaction.response.send_message("📤 ออกจากห้องแล้วครับ")
+    else:
+        await interaction.response.send_message("❌ บอทไม่ได้อยู่ในห้องเสียงครับ")
 
 bot.run(os.getenv('DISCORD_TOKEN'))
