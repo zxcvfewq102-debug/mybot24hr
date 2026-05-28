@@ -1,6 +1,6 @@
 nextcord
+yt-dlp
+requests
+openai
 python-dotenv
 flask
-yt-dlp
-PyNaCl
-requests
