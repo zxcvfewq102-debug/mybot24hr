@@ -33,6 +33,23 @@ ffmpeg_options = {'options': '-vn -loglevel quiet'}
 async def on_ready():
     print(f'Bot is ready: {bot.user}')
 
+# --- ระบบตอบกลับอัตโนมัติ (Auto-response) ---
+@bot.event
+async def on_message(message):
+    # ป้องกันไม่ให้บอทตอบตัวเอง
+    if message.author == bot.user:
+        return
+
+    # ถ้าเจอคำที่กำหนดให้บอทตอบกลับ
+    if "สวัสดี" in message.content:
+        await message.channel.send(f"สวัสดีครับคุณ {message.author.mention} มีอะไรให้ผมรับใช้ไหมครับ?")
+    
+    if "บอทเปิดเพลงยังไง" in message.content:
+        await message.channel.send("พิมพ์ /play ตามด้วยลิงก์เพลงได้เลยครับ!")
+
+    # สำคัญมาก: ต้องมีบรรทัดนี้เพื่อให้บอทอ่านคำสั่ง slash command อื่นๆ ได้ด้วย
+    await bot.process_commands(message)
+
 # --- Slash Commands ---
 
 @bot.slash_command(name="hello", description="ทักทายบอท")
@@ -41,13 +58,11 @@ async def hello(interaction: nextcord.Interaction):
 
 @bot.slash_command(name="ask", description="ถามคำถามบอท")
 async def ask(interaction: nextcord.Interaction, question: str):
-    # กำหนดคำถามและคำตอบที่นี่
     answers = {
         "บอททำอะไรได้บ้าง": "ฉันสามารถเล่นเพลง สั่งหยุด และทักทายคุณได้ครับ!",
         "ใครสร้างคุณ": "ฉันถูกสร้างขึ้นโดยคุณเจ้าของบอทคนเก่งครับ",
         "เวลาตอนนี้กี่โมง": "ขออภัยครับ ฉันเป็นบอทเพลง ยังดูเวลาให้ไม่ได้ครับ"
     }
-    # ถ้ามีคำถามในรายการ ให้ตอบ ถ้าไม่มีให้ตอบว่าไม่รู้
     response = answers.get(question, "ขออภัยครับ ผมไม่เข้าใจคำถามนี้ หรือไม่มีข้อมูลในระบบครับ")
     await interaction.response.send_message(f"❓ คำถาม: {question}\n🤖 คำตอบ: {response}")
 
