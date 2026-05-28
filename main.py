@@ -16,12 +16,12 @@ Thread(target=run_web).start()
 # --- ตั้งค่าบอท ---
 load_dotenv()
 intents = nextcord.Intents.all()
-# ใช้ commands.Bot ตามเดิมได้ แต่เราจะใช้ slash_command แทน
 bot = commands.Bot(intents=intents)
 
 # --- ตั้งค่า yt-dlp ---
 ydl_opts = {
     'format': 'bestaudio/best',
+    'cookiefile': 'cookies.txt', # เพิ่มคุกกี้ไว้ที่นี่ด้วยนะครับ
     'noplaylist': True,
     'quiet': True,
     'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'webm', 'preferredquality': '192'}],
@@ -34,6 +34,11 @@ async def on_ready():
 
 # --- Slash Commands ---
 
+# เพิ่มคำสั่ง /hello ตรงนี้ครับ
+@bot.slash_command(name="hello", description="ทักทายบอท")
+async def hello(interaction: nextcord.Interaction):
+    await interaction.response.send_message(f"สวัสดีครับ {interaction.user.mention}! ผมพร้อมใช้งานแล้วครับ 🤖")
+
 @bot.slash_command(name="play", description="เล่นเพลงจาก YouTube")
 async def play(interaction: nextcord.Interaction, url: str):
     if not interaction.user.voice:
@@ -42,7 +47,7 @@ async def play(interaction: nextcord.Interaction, url: str):
     if not interaction.guild.voice_client:
         await interaction.user.voice.channel.connect()
     
-    await interaction.response.defer() # ป้องกัน error กรณีใช้เวลานาน
+    await interaction.response.defer() 
     
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
