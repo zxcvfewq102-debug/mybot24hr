@@ -44,8 +44,8 @@ async def on_message(message):
     if "สวัสดี" in message.content:
         await message.channel.send(f"สวัสดีครับคุณ {message.author.mention} มีอะไรให้ผมรับใช้ไหมครับ?")
     
-    if "บอทเปิดเพลงยังไง" in message.content:
-        await message.channel.send("พิมพ์ /play ตามด้วยลิงก์เพลงได้เลยครับ!")
+    if "ขอโปรหน่อย" in message.content:
+        await message.channel.send("หาเองดีไอ้คาวยไอ้โง่")
 
     # สำคัญมาก: ต้องมีบรรทัดนี้เพื่อให้บอทอ่านคำสั่ง slash command อื่นๆ ได้ด้วย
     await bot.process_commands(message)
