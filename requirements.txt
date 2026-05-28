@@ -1,7 +1,7 @@
+discord.py
 nextcord
 yt-dlp
 requests
-openai
 python-dotenv
 flask
 PyNaCl
