@@ -36,6 +36,9 @@ async def on_message(message):
     if "สวัสดี" in message.content:
         await message.channel.send(f"สวัสดีครับคุณ {message.author.mention} มีอะไรให้ผมรับใช้ไหมครับ?")
     await bot.process_commands(message)
+if "ขอโปรหน่อย" in message.content:
+        await message.channel.send(f" {message.author.mention} ")
+    await bot.process_commands(message)
 
 # --- Slash Commands ---
 
