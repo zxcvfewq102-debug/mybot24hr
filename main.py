@@ -16,6 +16,7 @@ Thread(target=run_web).start()
 
 load_dotenv()
 intents = nextcord.Intents.all()
+intents.message_content = True # สำคัญ: ต้องเปิดให้บอทอ่านข้อความได้
 bot = commands.Bot(intents=intents)
 
 ydl_opts = {
@@ -28,20 +29,23 @@ ydl_opts = {
 }
 ffmpeg_options = {'options': '-vn -loglevel quiet'}
 
-# --- ระบบตอบกลับอัตโนมัติ ---
+# --- ระบบตอบกลับอัตโนมัติ (แก้ไขให้ถูกต้อง) ---
 @bot.event
 async def on_message(message):
     if message.author == bot.user:
         return
+    
+    # คำทักทาย
     if "สวัสดี" in message.content:
         await message.channel.send(f"สวัสดีครับคุณ {message.author.mention} มีอะไรให้ผมรับใช้ไหมครับ?")
-    await bot.process_commands(message)
-if "ขอโปรหน่อย" in message.content:
-        await message.channel.send(f" {message.author.mention} ")
+    
+    # คำสั่งโปร
+    if "ขอโปรหน่อย" in message.content:
+        await message.channel.send(f"นี่ครับโปรของคุณ {message.author.mention} 🎁")
+        
     await bot.process_commands(message)
 
 # --- Slash Commands ---
-
 @bot.slash_command(name="hello", description="ทักทายบอท")
 async def hello(interaction: nextcord.Interaction):
     await interaction.response.send_message(f"สวัสดีครับ {interaction.user.mention}! ผมพร้อมใช้งานแล้วครับ 🤖")
@@ -71,7 +75,6 @@ async def play(interaction: nextcord.Interaction, search: str):
         if not interaction.guild.voice_client:
             await interaction.user.voice.channel.connect()
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            # ค้นหาเพลงจากข้อความที่พิมพ์
             info = ydl.extract_info(f"ytsearch:{search}", download=False)
             if 'entries' in info:
                 video = info['entries'][0]
