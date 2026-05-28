@@ -16,14 +16,13 @@ def run_web(): app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 8080)))
 Thread(target=run_web).start()
 
 load_dotenv()
-# ดึงคีย์จากตัวแปรสภาพแวดล้อม (ปลอดภัยที่สุด)
+# ดึงคีย์จาก Railway Variables (ไม่ต้องวางคีย์ตรงๆ ในโค้ด)
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 intents = nextcord.Intents.all()
 intents.message_content = True
 bot = commands.Bot(intents=intents)
 
-# ระบบคิวเพลง
 queues = {}
 ydl_opts = {'format': 'bestaudio/best', 'cookiefile': 'cookies.txt', 'noplaylist': True}
 ffmpeg_options = {'options': '-vn -loglevel quiet'}
@@ -39,7 +38,7 @@ async def get_ai_response(prompt):
     except Exception as e:
         return f"ขอโทษครับ ระบบ AI มีปัญหา: {str(e)}"
 
-# --- ฟังก์ชันเล่นเพลงถัดไป ---
+# --- ฟังก์ชันเล่นเพลง ---
 async def play_next(interaction):
     guild_id = interaction.guild.id
     if queues.get(guild_id):
@@ -50,23 +49,12 @@ async def play_next(interaction):
     else:
         await interaction.channel.send("✅ เล่นคิวเพลงจนหมดแล้วครับ")
 
-# --- คำสั่ง ---
+# --- คำสั่ง Slash Commands ---
 @bot.slash_command(name="chat", description="คุยกับบอท AI")
 async def chat(interaction: nextcord.Interaction, message: str):
     await interaction.response.defer()
     response = await get_ai_response(message)
     await interaction.followup.send(f"🤖 **AI ตอบว่า:**\n{response}")
-
-@bot.slash_command(name="weather", description="เช็กสภาพอากาศ")
-async def weather(interaction: nextcord.Interaction, city: str):
-    api_key = "984cc187c35afb6f1b44d39de7fb191e" 
-    url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric&lang=th"
-    try:
-        await interaction.response.defer()
-        response = requests.get(url).json()
-        if response.get("cod") != 200: return await interaction.followup.send("❌ ไม่พบเมืองนี้ครับ")
-        await interaction.followup.send(f"🌤️ อากาศที่ {response['name']}: {response['weather'][0]['description']} อุณหภูมิ {response['main']['temp']}°C")
-    except Exception as e: await interaction.followup.send(f"❌ Error: {str(e)}")
 
 @bot.slash_command(name="play", description="ค้นหาและเล่นเพลง")
 async def play(interaction: nextcord.Interaction, search: str):
