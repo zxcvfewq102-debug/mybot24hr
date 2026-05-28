@@ -18,12 +18,13 @@ load_dotenv()
 intents = nextcord.Intents.all()
 bot = commands.Bot(intents=intents)
 
-# --- ตั้งค่า yt-dlp ---
+# --- ตั้งค่า yt-dlp พร้อม Cookies ---
 ydl_opts = {
     'format': 'bestaudio/best',
-    'cookiefile': 'cookies.txt', # เพิ่มคุกกี้ไว้ที่นี่ด้วยนะครับ
+    'cookiefile': 'cookies.txt',
     'noplaylist': True,
     'quiet': True,
+    'no_warnings': True,
     'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'webm', 'preferredquality': '192'}],
 }
 ffmpeg_options = {'options': '-vn -loglevel quiet'}
@@ -34,10 +35,21 @@ async def on_ready():
 
 # --- Slash Commands ---
 
-# เพิ่มคำสั่ง /hello ตรงนี้ครับ
 @bot.slash_command(name="hello", description="ทักทายบอท")
 async def hello(interaction: nextcord.Interaction):
     await interaction.response.send_message(f"สวัสดีครับ {interaction.user.mention}! ผมพร้อมใช้งานแล้วครับ 🤖")
+
+@bot.slash_command(name="ask", description="ถามคำถามบอท")
+async def ask(interaction: nextcord.Interaction, question: str):
+    # กำหนดคำถามและคำตอบที่นี่
+    answers = {
+        "บอททำอะไรได้บ้าง": "ฉันสามารถเล่นเพลง สั่งหยุด และทักทายคุณได้ครับ!",
+        "ใครสร้างคุณ": "ฉันถูกสร้างขึ้นโดยคุณเจ้าของบอทคนเก่งครับ",
+        "เวลาตอนนี้กี่โมง": "ขออภัยครับ ฉันเป็นบอทเพลง ยังดูเวลาให้ไม่ได้ครับ"
+    }
+    # ถ้ามีคำถามในรายการ ให้ตอบ ถ้าไม่มีให้ตอบว่าไม่รู้
+    response = answers.get(question, "ขออภัยครับ ผมไม่เข้าใจคำถามนี้ หรือไม่มีข้อมูลในระบบครับ")
+    await interaction.response.send_message(f"❓ คำถาม: {question}\n🤖 คำตอบ: {response}")
 
 @bot.slash_command(name="play", description="เล่นเพลงจาก YouTube")
 async def play(interaction: nextcord.Interaction, url: str):
