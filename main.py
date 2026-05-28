@@ -41,7 +41,7 @@ async def on_message(message):
     
     # คำสั่งโปร
     if "ขอโปรหน่อย" in message.content:
-        await message.channel.send(f"นี่ครับโปรของคุณ {message.author.mention} 🎁")
+        await message.channel.send(f"นี่ครับโปรของคุณ {message.author.mention} 🖕")
         
     await bot.process_commands(message)
 
