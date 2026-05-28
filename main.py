@@ -18,13 +18,18 @@ load_dotenv()
 intents = nextcord.Intents.all()
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-# --- ตั้งค่า yt-dlp พร้อม Cookies เพื่อแก้ปัญหา YouTube บล็อก ---
+# --- ตั้งค่า yt-dlp พร้อม Cookies และตัวช่วยดึงเสียง ---
 ydl_opts = {
     'format': 'bestaudio/best',
-    'cookiefile': 'cookies.txt',  # <--- ใส่บรรทัดนี้เพื่อให้บอทใช้ไฟล์คุกกี้
+    'cookiefile': 'cookies.txt',  # ต้องมีไฟล์นี้ในโฟลเดอร์บอท
     'noplaylist': True,
     'quiet': True,
     'no_warnings': True,
+    'postprocessors': [{
+        'key': 'FFmpegExtractAudio',
+        'preferredcodec': 'webm',
+        'preferredquality': '192',
+    }],
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
 }
 ffmpeg_options = {'options': '-vn -loglevel quiet'}
