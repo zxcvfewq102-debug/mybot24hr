@@ -18,9 +18,10 @@ load_dotenv()
 intents = nextcord.Intents.all()
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-# --- ตั้งค่า yt-dlp แบบใหม่ (หลบการบล็อก) ---
+# --- ตั้งค่า yt-dlp พร้อม Cookies เพื่อแก้ปัญหา YouTube บล็อก ---
 ydl_opts = {
     'format': 'bestaudio/best',
+    'cookiefile': 'cookies.txt',  # <--- ใส่บรรทัดนี้เพื่อให้บอทใช้ไฟล์คุกกี้
     'noplaylist': True,
     'quiet': True,
     'no_warnings': True,
@@ -37,7 +38,6 @@ async def play(ctx, *, url):
     if not ctx.author.voice:
         return await ctx.send("❌ ต้องอยู่ในห้องเสียงก่อนครับ")
     
-    # ถ้ายังไม่เข้าห้อง ให้เข้าห้อง
     if not ctx.voice_client:
         await ctx.author.voice.channel.connect()
     
