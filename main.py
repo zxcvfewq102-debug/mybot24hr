@@ -1,81 +1,54 @@
-import discord
-from discord import app_commands
-from discord.ext import commands
-import random
+import nextcord
+from nextcord import app_commands
+from nextcord.ext import commands
 import os
-from dotenv import load_dotenv
 
-# โหลดค่าจากไฟล์ .env
-load_dotenv()
-
-intents = discord.Intents.default()
+# ตั้งค่า Intents
+intents = nextcord.Intents.default()
 intents.message_content = True
-intents.members = True # จำเป็นสำหรับการระบุตัวสมาชิก
+intents.voice_states = True
+intents.members = True 
 
-client = commands.Bot(command_prefix="!", intents=intents)
+# เปลี่ยนมาใช้ client แทน bot เพื่อรองรับ Slash Commands ได้ดีขึ้น
+client = commands.Bot(command_prefix='/', intents=intents)
 
-# ตัวแปรสำหรับเกม
-game_data = {} # ใช้ dictionary เพื่อรองรับหลายห้อง/หลายเกม
+BotSever1 = 1204647300870311986  
+BotSever2 = 1468565605836918846  
 
 @client.event
 async def on_ready():
-    await client.tree.sync()
-    print(f"{client.user} พร้อมใช้งานแล้ว!")
+    # ซิงค์คำสั่งให้แสดงบน Discord
+    await client.tree.sync(guild=nextcord.Object(id=BotSever1))
+    print(f'Logged in as {client.user}')
+    
+    guild = client.get_guild(BotSever1)
+    if guild:
+        vc_channel = nextcord.utils.get(guild.voice_channels, id=BotSever2)
+        if vc_channel and not guild.voice_client:
+            await vc_channel.connect(self_deaf=True)
 
-@client.tree.command(name="xo", description="เริ่มเกม XO")
-async def xo(interaction: discord.Interaction, p1: discord.Member, p2: discord.Member):
-    # สร้างข้อมูลเกมสำหรับ server นี้
-    game_data[interaction.guild_id] = {
-        "board": [":white_large_square:"] * 9,
-        "p1": p1,
-        "p2": p2,
-        "turn": random.choice([p1, p2]),
-        "count": 0,
-        "gameOver": False
-    }
-    
-    data = game_data[interaction.guild_id]
-    board_str = "\n".join(["".join(data["board"][i:i+3]) for i in range(0, 9, 3)])
-    
-    await interaction.response.send_message(f"เริ่มเกม! {p1.mention} vs {p2.mention}\n{board_str}\nตาของ {data['turn'].mention}")
+# --- คำสั่ง Slash Command สำหรับเปิด/ปิด ---
 
-@client.tree.command(name="วาง", description="วาง X หรือ O (ใส่เลข 1-9)")
-async def place(interaction: discord.Interaction, pos: int):
-    if interaction.guild_id not in game_data or game_data[interaction.guild_id]["gameOver"]:
-        await interaction.response.send_message("ยังไม่มีเกมเริ่ม หรือเกมจบไปแล้ว! ใช้ /xo เพื่อเริ่มใหม่")
-        return
-
-    data = game_data[interaction.guild_id]
-    
-    if interaction.user != data["turn"]:
-        await interaction.response.send_message("ไม่ใช่ตาของคุณ!")
-        return
-    
-    if 1 <= pos <= 9 and data["board"][pos - 1] == ":white_large_square:":
-        mark = ":regional_indicator_x:" if data["turn"] == data["p1"] else ":o2:"
-        data["board"][pos - 1] = mark
-        data["count"] += 1
-        
-        # เช็คชนะ
-        winner = False
-        wins = [[0,1,2], [3,4,5], [6,7,8], [0,3,6], [1,4,7], [2,5,8], [0,4,8], [2,4,6]]
-        for w in wins:
-            if data["board"][w[0]] == data["board"][w[1]] == data["board"][w[2]] == mark:
-                winner = True
-        
-        board_str = "\n".join(["".join(data["board"][i:i+3]) for i in range(0, 9, 3)])
-        
-        if winner:
-            data["gameOver"] = True
-            await interaction.response.send_message(f"{interaction.user.mention} ชนะ!\n{board_str}")
-        elif data["count"] >= 9:
-            data["gameOver"] = True
-            await interaction.response.send_message(f"เสมอ!\n{board_str}")
-        else:
-            data["turn"] = data["p2"] if data["turn"] == data["p1"] else data["p1"]
-            await interaction.response.send_message(f"วางสำเร็จ!\n{board_str}\nตาของ {data['turn'].mention}")
+@client.slash_command(name="off", description="ให้บอทออกจากห้องเสียง", guild_ids=[BotSever1])
+async def bot_off(interaction: nextcord.Interaction):
+    if interaction.guild.voice_client:
+        await interaction.guild.voice_client.disconnect()
+        await interaction.response.send_message("✅ ออกจากห้องเสียงแล้วครับ")
     else:
-        await interaction.response.send_message("ช่องไม่ว่างหรือใส่เลขผิด!")
+        await interaction.response.send_message("❌ บอทไม่ได้อยู่ในห้องเสียงครับ", ephemeral=True)
 
-# รันบอทโดยใช้ Token จากไฟล์ .env
-client.run(os.getenv('DISCORD_TOKEN'))
+@client.slash_command(name="on", description="ให้บอทเข้าห้องเสียง", guild_ids=[BotSever1])
+async def bot_on(interaction: nextcord.Interaction):
+    vc_channel = nextcord.utils.get(interaction.guild.voice_channels, id=BotSever2)
+    if vc_channel:
+        if not interaction.guild.voice_client:
+            await vc_channel.connect(self_deaf=True)
+            await interaction.response.send_message("✅ เข้าห้องเสียงแล้วครับ")
+        else:
+            await interaction.response.send_message("⚠️ บอทอยู่ในห้องเสียงอยู่แล้วครับ", ephemeral=True)
+    else:
+        await interaction.response.send_message("❌ ไม่พบช่องเสียงที่ระบุไว้ครับ", ephemeral=True)
+
+# ----------------------------------------
+
+client.run("ใส่_TOKEN_ของคุณที่นี่")
