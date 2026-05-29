@@ -1,56 +1,70 @@
-import nextcord
-from nextcord.ext import commands
-import os
+import discord
+from discord.ext import commands
+import wavelink
 
-# 1. ตั้งค่า Intents
-intents = nextcord.Intents.default()
+# ตั้งค่า Intents
+intents = discord.Intents.default()
 intents.message_content = True
-intents.voice_states = True
-intents.members = True
 
-# 2. ตั้งค่า Bot
-bot = commands.Bot(command_prefix='!', intents=intents)
+class MusicBot(commands.Bot):
+    def __init__(self):
+        super().__init__(command_prefix="!", intents=intents)
 
-BotSever1 = 1204647300870311986  # ID เซิร์ฟเวอร์
-BotSever2 = 1468565605836918846  # ID ห้องเสียง
+    async def setup_hook(self):
+        # 1. เชื่อมต่อ Lavalink
+        node = wavelink.Node(
+            uri="https://lavalinkv4.serenetia.com",
+            password="https://seretia.link/discord"
+        )
+        await wavelink.Pool.connect(client=self, nodes=[node])
+        
+        # 2. ใส่เลข ID เซิร์ฟเวอร์ของคุณที่นี่ เพื่อให้คำสั่งขึ้นทันที
+        MY_GUILD_ID = discord.Object(id=1204647300870311986) 
+        self.tree.copy_global_to(guild=MY_GUILD_ID)
+        await self.tree.sync(guild=MY_GUILD_ID)
+        
+        print("Bot is ready and Commands Synced to your server!")
 
-@bot.event
-async def on_ready():
-    print(f'✅ Logged in as {bot.user}')
-    try:
-        await bot.tree.sync(guild=nextcord.Object(id=BotSever1))
-        print("✅ Slash commands synced")
-    except Exception as e:
-        print(f"❌ Error syncing commands: {e}")
+bot = MusicBot()
 
-# คำสั่ง /off: ให้บอทออกจากห้องเสียง
-@bot.slash_command(name="off", description="ให้บอทออกจากห้องเสียง", guild_ids=[BotSever1])
-async def bot_off(interaction: nextcord.Interaction):
-    if interaction.guild.voice_client:
-        await interaction.guild.voice_client.disconnect()
-        await interaction.response.send_message("✅ ออกจากห้องเสียงแล้วครับ")
-    else:
-        await interaction.response.send_message("❌ บอทไม่ได้อยู่ในห้องเสียงครับ", ephemeral=True)
+# คลาสสร้างปุ่มควบคุม
+class MusicControlView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
 
-# คำสั่ง /on: ให้บอทเข้าห้องเสียง
-@bot.slash_command(name="on", description="ให้บอทเข้าห้องเสียง", guild_ids=[BotSever1])
-async def bot_on(interaction: nextcord.Interaction):
-    vc_channel = nextcord.utils.get(interaction.guild.voice_channels, id=BotSever2)
-    if vc_channel:
-        if not interaction.guild.voice_client:
-            # 1. เชื่อมต่อเข้าห้องเสียง
-            await vc_channel.connect()
-            # 2. ตั้งค่า self_deaf แยกออกมาทีหลัง
-            await interaction.guild.change_voice_state(channel=vc_channel, self_deaf=True)
-            await interaction.response.send_message("✅ เข้าห้องเสียงแล้วครับ")
-        else:
-            await interaction.response.send_message("⚠️ บอทอยู่ในห้องเสียงอยู่แล้วครับ", ephemeral=True)
-    else:
-        await interaction.response.send_message("❌ ไม่พบช่องเสียงที่ระบุไว้ครับ", ephemeral=True)
+    @discord.ui.button(label="⏸️/▶️", style=discord.ButtonStyle.blurple)
+    async def pause_resume(self, interaction: discord.Interaction, button: discord.ui.Button):
+        player = wavelink.Pool.get_node().get_player(interaction.guild.id)
+        if player:
+            await player.pause(not player.paused)
+            await interaction.response.send_message("สลับโหมดเล่น/หยุด", ephemeral=True)
 
-# รันบอท
-token = os.getenv('DISCORD_TOKEN')
-if token:
-    bot.run(token)
-else:
-    print("❌ ERROR: กรุณาตั้งค่า DISCORD_TOKEN ใน Railway Variables")
+    @discord.ui.button(label="⏹️ Stop", style=discord.ButtonStyle.red)
+    async def stop(self, interaction: discord.Interaction, button: discord.ui.Button):
+        player = wavelink.Pool.get_node().get_player(interaction.guild.id)
+        if player:
+            await player.disconnect()
+            await interaction.response.send_message("หยุดเพลงแล้ว", ephemeral=True)
+
+@bot.tree.command(name="play", description="เล่นเพลงจาก YouTube")
+async def play(interaction: discord.Interaction, query: str):
+    if not interaction.user.voice:
+        return await interaction.response.send_message("ต้องอยู่ในห้องเสียงก่อนครับ!", ephemeral=True)
+    
+    await interaction.response.defer()
+    
+    player = wavelink.Pool.get_node().get_player(interaction.guild.id)
+    if not player:
+        player = await interaction.user.voice.channel.connect(cls=wavelink.Player)
+    
+    tracks = await wavelink.Playable.search(query)
+    if not tracks:
+        return await interaction.followup.send("ไม่พบเพลงนี้ครับ")
+    
+    await player.play(tracks[0])
+    
+    embed = discord.Embed(title="🎵 กำลังเล่นเพลง", description=f"**{tracks[0].title}**", color=discord.Color.blue())
+    await interaction.followup.send(embed=embed, view=MusicControlView())
+
+# ใส่ Token ใหม่ของคุณที่นี่
+bot.run("YOUR_TOKEN_HERE")
