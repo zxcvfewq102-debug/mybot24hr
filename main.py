@@ -1,4 +1,5 @@
 import discord
+import os
 from discord.ext import commands
 import wavelink
 
@@ -11,14 +12,14 @@ class MusicBot(commands.Bot):
         super().__init__(command_prefix="!", intents=intents)
 
     async def setup_hook(self):
-        # 1. เชื่อมต่อ Lavalink
+        # 1. เชื่อมต่อ Lavalink (ต้องมีไฟล์ requirements.txt เพื่อให้รู้จัก wavelink)
         node = wavelink.Node(
             uri="https://lavalinkv4.serenetia.com",
             password="https://seretia.link/discord"
         )
         await wavelink.Pool.connect(client=self, nodes=[node])
         
-        # 2. ใส่เลข ID เซิร์ฟเวอร์ของคุณที่นี่ เพื่อให้คำสั่งขึ้นทันที
+        # 2. Sync คำสั่ง (ใส่ ID เซิร์ฟเวอร์ของคุณ)
         MY_GUILD_ID = discord.Object(id=1204647300870311986) 
         self.tree.copy_global_to(guild=MY_GUILD_ID)
         await self.tree.sync(guild=MY_GUILD_ID)
@@ -27,7 +28,6 @@ class MusicBot(commands.Bot):
 
 bot = MusicBot()
 
-# คลาสสร้างปุ่มควบคุม
 class MusicControlView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -66,5 +66,5 @@ async def play(interaction: discord.Interaction, query: str):
     embed = discord.Embed(title="🎵 กำลังเล่นเพลง", description=f"**{tracks[0].title}**", color=discord.Color.blue())
     await interaction.followup.send(embed=embed, view=MusicControlView())
 
-# ใส่ Token ใหม่ของคุณที่นี่
-bot.run("YOUR_TOKEN_HERE")
+# รันบอทโดยดึงค่าจาก Railway Variables
+bot.run(os.getenv("DISCORD_TOKEN"))
