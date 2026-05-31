@@ -4,9 +4,8 @@ from discord.ext import commands
 import asyncio
 import yt_dlp
 import logging
-from aiohttp import web
 
-# ตั้งค่า Log ตรวจสอบสถานะ
+# ตั้งค่า Log
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -19,30 +18,15 @@ class MusicBot(commands.Bot):
         self.queues_data = {}
 
     async def setup_hook(self):
-        # 🌐 สร้างระบบ Web Server สำหรับล็อกสถานะออนไลน์บน Railway 
-        async def handle_health(request):
-            return web.Response(text="Bot is running smoothly!", status=200)
-
-        app = web.Application()
-        app.router.add_get('/', handle_health)
-        runner = web.AppRunner(app)
-        await runner.setup()
-        
-        # ดึงพอร์ตที่ Railway กำหนดมาให้
-        port = int(os.getenv("PORT", 8080))
-        site = web.TCPSite(runner, "0.0.0.0", port)
-        await site.start()
-        logger.info(f"🌐 [Railway Web] พอร์ตระบบกำลังเปิดทำงานที่พอร์ต: {port}")
-
-        # Sync คำสั่ง Slash Commands ไปที่ดิสคอร์ดของคุณ
+        # Sync คำสั่ง Slash Commands เข้าเซิร์ฟเวอร์ดิสคอร์ดโดยตรง
         MY_GUILD_ID = discord.Object(id=1204647300870311986) 
         self.tree.copy_global_to(guild=MY_GUILD_ID)
         await self.tree.sync(guild=MY_GUILD_ID)
-        logger.info("✅ [Discord Command] ซิงค์คำสั่งสแลชเข้าเซิร์ฟเวอร์สำเร็จ!")
+        logger.info("✅ [Discord] ซิงค์คำสั่งสแลชเข้าเซิร์ฟเวอร์สำเร็จและพร้อมใช้งาน!")
 
 bot = MusicBot()
 
-# --- 🎵 ตั้งค่าระบบดึงเพลง (yt-dlp + FFmpeg) ---
+# --- 🎵 ระบบเครื่องเล่นเพลง (yt-dlp + FFmpeg) ---
 YTDL_OPTIONS = {
     'format': 'bestaudio/best',
     'noplaylist': True,
@@ -145,13 +129,6 @@ async def play(interaction: discord.Interaction, query: str):
         )
         await interaction.followup.send(embed=embed, view=MusicControlView())
 
-# --- 🚀 ฟังก์ชันหลักที่บังคับให้โปรแกรมถือสายรอออนไลน์ถาวร ---
-async def main():
-    async with bot:
-        await bot.start(os.getenv("DISCORD_TOKEN"))
-
+# รันบอทดิสคอร์ดตรงๆ ตัวเดียว
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        pass
+    bot.run(os.getenv("DISCORD_TOKEN"))
