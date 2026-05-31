@@ -1,4 +1,4 @@
-import discord
+import discord  # 🌟 แก้ไขเป็นตัวพิมพ์เล็กทั้งหมดเรียบร้อย
 import os
 from discord.ext import commands
 import asyncio
@@ -23,7 +23,7 @@ class MusicBot(commands.Bot):
         self.queues_data = {}
 
     async def setup_hook(self):
-        # เปลี่ยน ID ตรงนี้ให้ตรงกับ ID เซิร์ฟเวอร์ดิสคอร์ดของคุณ
+        # ซิงค์คำสั่งสแลชเข้าเซิร์ฟเวอร์ดิสคอร์ดของคุณ
         MY_GUILD_ID = discord.Object(id=1204647300870311986) 
         self.tree.copy_global_to(guild=MY_GUILD_ID)
         await self.tree.sync(guild=MY_GUILD_ID)
@@ -135,10 +135,17 @@ async def play(interaction: discord.Interaction, query: str):
         )
         await interaction.followup.send(embed=embed, view=MusicControlView())
 
-# 🚀 รันบอทระบบตรงๆ แบบ Single-Process 
-if __name__ == "__main__":
+# 🚀 ระบบถือสายสแตนด์บายแบบ Async ป้องกันการดับเองบน Railway
+async def main():
     token = os.getenv("DISCORD_TOKEN")
     if not token:
-        logger.critical("❌ ไม่พบตัวแปร DISCORD_TOKEN ในหน้า Variables กรุณาตรวจสอบด้วยครับ!")
-    else:
-        bot.run(token)
+        logger.critical("❌ ไม่พบตัวแปร DISCORD_TOKEN ในหน้า Variables!")
+        return
+    async with bot:
+        await bot.start(token)
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass
