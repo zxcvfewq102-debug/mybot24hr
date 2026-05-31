@@ -3,12 +3,12 @@ import os
 from discord.ext import commands
 import wavelink
 import logging
-import asyncio
 
-# 1. บังคับเปิด Logging แบบละเอียดสูงสุด (ถ้าพังจะเห็นทันทีว่าพังบรรทัดไหน)
+# บังคับเปิด Logging เพื่อตรวจสอบการทำงานและ Error ต่างๆ
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# ตั้งค่า Intents
 intents = discord.Intents.default()
 intents.message_content = True
 
@@ -17,22 +17,20 @@ class MusicBot(commands.Bot):
         super().__init__(command_prefix="!", intents=intents)
 
     async def setup_hook(self):
-        # 2. เปลี่ยนมาใช้ Free Lavalink Node ตัวอื่นที่อัปเดตและเสถียรกว่า (Lavalink v4)
-        # เครดิต Node: ดึงมาจากโปรเจกต์ฟรีที่ใช้งานได้ในปัจจุบัน
+        # แก้ไขจุดพิมพ์ผิดจาก html:// เป็น https:// เรียบร้อยแล้วครับ
         node = wavelink.Node(
-            uri="html://lavalink.proxy.lol:443", # หรือลองใช้ "https://node.raidenbot.xyz:443"
-            password="https://dsc.gg/yanderebot"  # รหัสผ่านของ node นั้นๆ
+            uri="https://lavalink.proxy.lol:443", 
+            password="https://dsc.gg/yanderebot"
         )
         
         try:
             logger.info("กำลังพยายามเชื่อมต่อกับ Lavalink...")
-            # ใส่ timeout หรือเชื่อมต่อในรูปแบบ pool
             await wavelink.Pool.connect(client=self, nodes=[node])
             logger.info("เชื่อมต่อ Lavalink สำเร็จแล้ว!")
         except Exception as e:
             logger.error(f"ไม่สามารถเชื่อมต่อ Lavalink ได้เนื่องจาก: {e}")
         
-        # Sync คำสั่ง
+        # Sync คำสั่งไปยังเซิร์ฟเวอร์ของคุณ
         MY_GUILD_ID = discord.Object(id=1204647300870311986) 
         self.tree.copy_global_to(guild=MY_GUILD_ID)
         await self.tree.sync(guild=MY_GUILD_ID)
@@ -41,16 +39,20 @@ class MusicBot(commands.Bot):
 
 bot = MusicBot()
 
+# --- ระบบดักจับเหตุการณ์เมื่อเพลงจบ (เล่นเพลงถัดไปเรื่อยๆ อัตโนมัติ) ---
 @bot.listen()
 async def on_wavelink_track_end(payload: wavelink.TrackEndEventPayload):
     player = payload.player
     if not player:
         return
 
+    # ตรวจสอบว่ามีเพลงเหลืออยู่ในคิวไหม
     if not player.queue.is_empty:
+        # ดึงเพลงถัดไปจากคิวออกมาเล่นต่อทันที
         next_track = player.queue.get()
         await player.play(next_track)
         
+        # ส่งข้อความแจ้งเตือนพร้อมปุ่มควบคุมในห้องแชทล่าสุด
         if hasattr(player, "home_channel") and player.home_channel:
             embed = discord.Embed(
                 title="🎵 กำลังเล่นเพลงถัดไป", 
@@ -74,7 +76,7 @@ class MusicControlView(discord.ui.View):
     async def stop(self, interaction: discord.Interaction, button: discord.ui.Button):
         player = wavelink.Pool.get_node().get_player(interaction.guild.id)
         if player:
-            player.queue.clear()
+            player.queue.clear() # ล้างคิวทั้งหมดเมื่อกดหยุด
             await player.disconnect()
             await interaction.response.send_message("หยุดเพลงและล้างคิวแล้ว", ephemeral=True)
 
@@ -89,6 +91,7 @@ async def play(interaction: discord.Interaction, query: str):
         player = wavelink.Pool.get_node().get_player(interaction.guild.id)
         if not player:
             player = await interaction.user.voice.channel.connect(cls=wavelink.Player)
+            # บันทึกห้องแชทไว้ใช้ส่งข้อความตอนเปลี่ยนเพลงอัตโนมัติ
             player.home_channel = interaction.channel 
         
         tracks = await wavelink.Playable.search(query)
@@ -97,7 +100,9 @@ async def play(interaction: discord.Interaction, query: str):
         
         track = tracks[0]
 
+        # เช็คว่าบอทกำลังเล่นเพลงอยู่หรือไม่
         if player.playing:
+            # ถ้าเล่นอยู่ ให้เอาเพลงใหม่ไปต่อแถวในคิว (Queue)
             player.queue.put(track)
             embed = discord.Embed(
                 title="⏳ เพิ่มเข้าคิวแล้ว", 
@@ -106,6 +111,7 @@ async def play(interaction: discord.Interaction, query: str):
             )
             await interaction.followup.send(embed=embed)
         else:
+            # ถ้าไม่มีเพลงเล่นอยู่ ให้สั่งเล่นทันที
             await player.play(track)
             embed = discord.Embed(
                 title="🎵 กำลังเล่นเพลง", 
@@ -113,8 +119,10 @@ async def play(interaction: discord.Interaction, query: str):
                 color=discord.Color.blue()
             )
             await interaction.followup.send(embed=embed, view=MusicControlView())
+            
     except Exception as e:
         logger.error(f"เกิดข้อผิดพลาดในคำสั่ง play: {e}")
         await interaction.followup.send("เกิดข้อผิดพลาดในระบบเล่นเพลง กรุณาลองใหม่อีกครั้ง")
 
+# รันบอทโดยดึงค่าจาก Railway Variables
 bot.run(os.getenv("DISCORD_TOKEN"))
