@@ -1,4 +1,4 @@
-import discord  # 🌟 แก้ไขเป็นตัวพิมพ์เล็กทั้งหมดเรียบร้อย
+import discord  
 import os
 from discord.ext import commands
 import asyncio
@@ -31,13 +31,13 @@ class MusicBot(commands.Bot):
 
 bot = MusicBot()
 
-# --- 🎵 ตั้งค่าเครื่องเล่นเพลง (ดักและปิดคำเตือนรบกวนระบบ) ---
+# --- 🎵 ตั้งค่าเครื่องเล่นเพลง (ดักและปิดคำเตือนรบกวนระบบ + ค้นหาผ่าน SoundCloud แทน) ---
 YTDL_OPTIONS = {
     'format': 'bestaudio/best',
     'noplaylist': True,
-    'quiet': True,              # สั่งให้เงียบ ไม่ต้องปริ้นต์ข้อมูลขยะออกมา
-    'no_warnings': True,        # ❌ สั่งปิดคำเตือน JavaScript รัวๆ ทิ้งไปเลย!
-    'default_search': 'auto',
+    'quiet': True,              
+    'no_warnings': True,        
+    'default_search': 'scsearch',  # 🌟 สลับมาค้นหาและเล่นเพลงผ่าน SoundCloud เรียบร้อย (แก้ปัญหา Sign in)
     'source_address': '0.0.0.0'
 }
 FFMPEG_OPTIONS = {
@@ -87,7 +87,7 @@ class MusicControlView(discord.ui.View):
             await vc.disconnect()
             await interaction.response.send_message("หยุดเพลงและออกจากห้องแชทแล้ว", ephemeral=True)
 
-@bot.tree.command(name="play", description="เล่นเพลงจาก YouTube")
+@bot.tree.command(name="play", description="เล่นเพลงผ่านคลัง SoundCloud")
 async def play(interaction: discord.Interaction, query: str):
     if not interaction.user.voice:
         return await interaction.response.send_message("ต้องอยู่ในห้องเสียงก่อนครับ!", ephemeral=True)
@@ -111,7 +111,7 @@ async def play(interaction: discord.Interaction, query: str):
         }
     except Exception as e:
         logger.error(f"Error extracting video: {e}")
-        return await interaction.followup.send("เกิดข้อผิดพลาดในการดึงข้อมูลเพลง")
+        return await interaction.followup.send("เกิดข้อผิดพลาดในการดึงข้อมูลเพลง ลองเปลี่ยนชื่อเพลงค้นหาดูใหม่อีกครั้งครับ")
 
     vc = interaction.guild.voice_client
     if not vc:
