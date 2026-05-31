@@ -4,6 +4,7 @@ from discord.ext import commands
 import wavelink
 import logging
 import asyncio
+from aiohttp import web
 
 # เปิดใช้งานการบันทึก Log 
 logging.basicConfig(level=logging.INFO)
@@ -17,20 +18,34 @@ class MusicBot(commands.Bot):
         super().__init__(command_prefix="!", intents=intents)
 
     async def setup_hook(self):
-        # ฟังก์ชันเชื่อมต่อเบื้องหลังเพื่อป้องกัน Railway สั่งตัดการทำงาน
+        # 1. ระบบแก้ปัญหา Railway ดับ: เปิด Web Server หลอกระบบเอาไว้
+        async def web_server():
+            app = web.Application()
+            app.router.add_get('/', lambda r: web.Response(text="Bot is running!"))
+            runner = web.AppRunner(app)
+            await runner.setup()
+            # ดึง PORT จาก Railway (ถ้าไม่มีจะใช้ 8080 เป็นค่าเริ่มต้น)
+            port = int(os.getenv("PORT", 8080))
+            site = web.TCPSite(runner, '0.0.0.0', port)
+            await site.start()
+            logger.info(f"Web server started on port {port} for Railway Health Check")
+
+        # 2. ระบบเชื่อมต่อ Lavalink เบื้องหลัง (เปลี่ยนเป็นตัวที่เสถียรที่สุด)
         async def connect_lavalink():
-            # 🌟 เปลี่ยนมาใช้ Node ของ โครงการ Lavalink สาธารณะที่ใช้งานได้เสถียรในปัจจุบัน
+            # ใช้ Node ของ washicord ที่เปิดให้บริการยาวนานและเสถียรมากในตอนนี้
             node = wavelink.Node(
-                uri="https://lavalink.is-a.dev:443", 
-                password="password"
+                uri="https://lavalink.washicord.moe:443", 
+                password="washilavalink"
             )
             try:
-                logger.info("กำลังพยายามเชื่อมต่อกับ Lavalink Node ตัวใหม่...")
+                logger.info("กำลังพยายามเชื่อมต่อกับ Washicord Lavalink Node...")
                 await wavelink.Pool.connect(client=self, nodes=[node])
                 logger.info("เชื่อมต่อ Lavalink สำเร็จแล้ว บอทเพลงพร้อมใช้งาน!")
             except Exception as e:
                 logger.error(f"ไม่สามารถเชื่อมต่อ Lavalink ได้เนื่องจาก: {e}")
 
+        # สั่งให้งานทั้งหมดทำงานเบื้องหลังทันที
+        self.loop.create_task(web_server())
         self.loop.create_task(connect_lavalink())
         
         # Sync คำสั่งไปยังเซิร์ฟเวอร์ของคุณ
@@ -49,12 +64,10 @@ async def on_wavelink_track_end(payload: wavelink.TrackEndEventPayload):
     if not player:
         return
 
-    # ถ้ายังมีเพลงเหลืออยู่ในคิว
     if not player.queue.is_empty:
         next_track = player.queue.get()
         await player.play(next_track)
         
-        # ส่ง Embed บอกเพลงถัดไปในห้องแชทล่าสุด
         if hasattr(player, "home_channel") and player.home_channel:
             embed = discord.Embed(
                 title="🎵 กำลังเล่นเพลงถัดไป", 
