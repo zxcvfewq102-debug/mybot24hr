@@ -3,6 +3,7 @@ import os
 from discord.ext import commands
 import wavelink
 import logging
+import asyncio
 
 # บังคับเปิด Logging เพื่อตรวจสอบการทำงาน
 logging.basicConfig(level=logging.INFO)
@@ -16,18 +17,21 @@ class MusicBot(commands.Bot):
         super().__init__(command_prefix="!", intents=intents)
 
     async def setup_hook(self):
-        # เปลี่ยนมาใช้ Raiden Node ที่เสถียรกว่าและออนไลน์อยู่ชัวร์ๆ
-        node = wavelink.Node(
-            uri="https://node.raidenbot.xyz:443", 
-            password="https://dsc.gg/raidenbot"
-        )
-        
-        try:
-            logger.info("กำลังพยายามเชื่อมต่อกับ Lavalink Node ใหม่...")
-            await wavelink.Pool.connect(client=self, nodes=[node])
-            logger.info("เชื่อมต่อ Lavalink สำเร็จแล้ว!")
-        except Exception as e:
-            logger.error(f"ไม่สามารถเชื่อมต่อ Lavalink ได้เนื่องจาก: {e}")
+        # สร้างฟังก์ชันย่อยสำหรับเชื่อมต่อเป็น Background Task เพื่อไม่ให้ Railway สั่งปิดบอท
+        async def connect_lavalink():
+            node = wavelink.Node(
+                uri="https://node.raidenbot.xyz:443", 
+                password="https://dsc.gg/raidenbot"
+            )
+            try:
+                logger.info("กำลังพยายามเชื่อมต่อกับ Lavalink Node (Background)...")
+                await wavelink.Pool.connect(client=self, nodes=[node])
+                logger.info("เชื่อมต่อ Lavalink สำเร็จแล้ว!")
+            except Exception as e:
+                logger.error(f"ไม่สามารถเชื่อมต่อ Lavalink ได้เนื่องจาก: {e}")
+
+        # สั่งให้ทำงานเบื้องหลังทันที บอทหลักจะได้รันต่อได้ไม่โดนยื้อเวลา
+        self.loop.create_task(connect_lavalink())
         
         # Sync คำสั่งไปยังเซิร์ฟเวอร์ของคุณ
         MY_GUILD_ID = discord.Object(id=1204647300870311986) 
