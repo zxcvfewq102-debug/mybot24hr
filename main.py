@@ -4,10 +4,9 @@ from discord.ext import commands
 import asyncio
 import yt_dlp
 import logging
-from http.server import BaseHTTPRequestHandler, HTTPServer
-import threading
+from aiohttp import web
 
-# เปิดใช้งานการบันทึก Log
+# ตั้งค่า Log ตรวจสอบสถานะ
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -17,40 +16,33 @@ intents.message_content = True
 class MusicBot(commands.Bot):
     def __init__(self):
         super().__init__(command_prefix="!", intents=intents)
+        self.queues_data = {}
 
     async def setup_hook(self):
-        # Sync คำสั่งสแลช (Slash Commands)
+        # 🌐 สร้างระบบ Web Server สำหรับล็อกสถานะออนไลน์บน Railway 
+        async def handle_health(request):
+            return web.Response(text="Bot is running smoothly!", status=200)
+
+        app = web.Application()
+        app.router.add_get('/', handle_health)
+        runner = web.AppRunner(app)
+        await runner.setup()
+        
+        # ดึงพอร์ตที่ Railway กำหนดมาให้
+        port = int(os.getenv("PORT", 8080))
+        site = web.TCPSite(runner, "0.0.0.0", port)
+        await site.start()
+        logger.info(f"🌐 [Railway Web] พอร์ตระบบกำลังเปิดทำงานที่พอร์ต: {port}")
+
+        # Sync คำสั่ง Slash Commands ไปที่ดิสคอร์ดของคุณ
         MY_GUILD_ID = discord.Object(id=1204647300870311986) 
         self.tree.copy_global_to(guild=MY_GUILD_ID)
         await self.tree.sync(guild=MY_GUILD_ID)
-        print("Bot is ready and Commands Synced!")
+        logger.info("✅ [Discord Command] ซิงค์คำสั่งสแลชเข้าเซิร์ฟเวอร์สำเร็จ!")
 
 bot = MusicBot()
 
-# --- 🌐 ระบบ Web Server สำหรับหลอก Railway Health Check (แก้ไขพอร์ตให้เสถียร) ---
-class HealthCheckHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header("Content-type", "text/plain")
-        self.end_headers()
-        self.wfile.write(b"Bot is online and healthy!")
-        
-    def log_message(self, format, *args):
-        # ปิด log หน้าเว็บเพื่อไม่ให้รกหน้าคอนโซลหลัก
-        return
-
-def run_health_check_server():
-    # ดึงค่า PORT ที่ Railway บังคับส่งมาให้ ถ้าไม่มีจะใช้พอร์ต 8080
-    port = int(os.getenv("PORT", 8080))
-    server = HTTPServer(("0.0.0.0", port), HealthCheckHandler)
-    logger.info(f"Railway Health Check Server running on port {port}")
-    server.serve_forever()
-
-# สั่งให้ Web Server ทำงานแยกอีก Thread หนึ่งทันทีตั้งแต่เริ่มรันโปรแกรม
-threading.Thread(target=run_health_check_server, daemon=True).start()
-
-
-# --- 🎵 ระบบตั้งค่าเครื่องเล่นเพลง (yt-dlp + FFmpeg) ---
+# --- 🎵 ตั้งค่าระบบดึงเพลง (yt-dlp + FFmpeg) ---
 YTDL_OPTIONS = {
     'format': 'bestaudio/best',
     'noplaylist': True,
@@ -64,7 +56,6 @@ FFMPEG_OPTIONS = {
 }
 
 ytdl = yt_dlp.YoutubeDL(YTDL_OPTIONS)
-bot.queues_data = {}
 
 def play_next(interaction, guild_id):
     if guild_id in bot.queues_data and bot.queues_data[guild_id]:
@@ -154,5 +145,13 @@ async def play(interaction: discord.Interaction, query: str):
         )
         await interaction.followup.send(embed=embed, view=MusicControlView())
 
-# รันบอทหลัก
-bot.run(os.getenv("DISCORD_TOKEN"))
+# --- 🚀 ฟังก์ชันหลักที่บังคับให้โปรแกรมถือสายรอออนไลน์ถาวร ---
+async def main():
+    async with bot:
+        await bot.start(os.getenv("DISCORD_TOKEN"))
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass
