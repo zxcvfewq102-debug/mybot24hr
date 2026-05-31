@@ -4,9 +4,14 @@ from discord.ext import commands
 import asyncio
 import yt_dlp
 import logging
+import sys
 
-# ตั้งค่า Log
-logging.basicConfig(level=logging.INFO)
+# 📊 ตั้งค่าระบบ Log ให้ปริ้นต์ออกหน้าจอทันทีแบบละเอียดยิบ
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
 logger = logging.getLogger(__name__)
 
 intents = discord.Intents.default()
@@ -18,19 +23,20 @@ class MusicBot(commands.Bot):
         self.queues_data = {}
 
     async def setup_hook(self):
-        # Sync คำสั่ง Slash Commands เข้าเซิร์ฟเวอร์ดิสคอร์ดโดยตรง
+        # เปลี่ยน ID ตรงนี้ให้ตรงกับ ID เซิร์ฟเวอร์ดิสคอร์ดของคุณ
         MY_GUILD_ID = discord.Object(id=1204647300870311986) 
         self.tree.copy_global_to(guild=MY_GUILD_ID)
         await self.tree.sync(guild=MY_GUILD_ID)
-        logger.info("✅ [Discord] ซิงค์คำสั่งสแลชเข้าเซิร์ฟเวอร์สำเร็จและพร้อมใช้งาน!")
+        logger.info("🤖 [Discord] ซิงค์คำสั่ง Slash Commands สำเร็จและพร้อมลุยแล้วครับ!")
 
 bot = MusicBot()
 
-# --- 🎵 ระบบเครื่องเล่นเพลง (yt-dlp + FFmpeg) ---
+# --- 🎵 ตั้งค่าเครื่องเล่นเพลง (ดักและปิดคำเตือนรบกวนระบบ) ---
 YTDL_OPTIONS = {
     'format': 'bestaudio/best',
     'noplaylist': True,
-    'quiet': True,
+    'quiet': True,              # สั่งให้เงียบ ไม่ต้องปริ้นต์ข้อมูลขยะออกมา
+    'no_warnings': True,        # ❌ สั่งปิดคำเตือน JavaScript รัวๆ ทิ้งไปเลย!
     'default_search': 'auto',
     'source_address': '0.0.0.0'
 }
@@ -129,6 +135,10 @@ async def play(interaction: discord.Interaction, query: str):
         )
         await interaction.followup.send(embed=embed, view=MusicControlView())
 
-# รันบอทดิสคอร์ดตรงๆ ตัวเดียว
+# 🚀 รันบอทระบบตรงๆ แบบ Single-Process 
 if __name__ == "__main__":
-    bot.run(os.getenv("DISCORD_TOKEN"))
+    token = os.getenv("DISCORD_TOKEN")
+    if not token:
+        logger.critical("❌ ไม่พบตัวแปร DISCORD_TOKEN ในหน้า Variables กรุณาตรวจสอบด้วยครับ!")
+    else:
+        bot.run(token)
