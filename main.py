@@ -5,7 +5,7 @@ import wavelink
 import logging
 import asyncio
 
-# บังคับเปิด Logging เพื่อตรวจสอบการทำงาน
+# เปิดใช้งานการบันทึก Log 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -17,20 +17,20 @@ class MusicBot(commands.Bot):
         super().__init__(command_prefix="!", intents=intents)
 
     async def setup_hook(self):
-        # สร้างฟังก์ชันย่อยสำหรับเชื่อมต่อเป็น Background Task เพื่อไม่ให้ Railway สั่งปิดบอท
+        # ฟังก์ชันเชื่อมต่อเบื้องหลังเพื่อป้องกัน Railway สั่งตัดการทำงาน
         async def connect_lavalink():
+            # 🌟 เปลี่ยนมาใช้ Node ของ โครงการ Lavalink สาธารณะที่ใช้งานได้เสถียรในปัจจุบัน
             node = wavelink.Node(
-                uri="https://node.raidenbot.xyz:443", 
-                password="https://dsc.gg/raidenbot"
+                uri="https://lavalink.is-a.dev:443", 
+                password="password"
             )
             try:
-                logger.info("กำลังพยายามเชื่อมต่อกับ Lavalink Node (Background)...")
+                logger.info("กำลังพยายามเชื่อมต่อกับ Lavalink Node ตัวใหม่...")
                 await wavelink.Pool.connect(client=self, nodes=[node])
-                logger.info("เชื่อมต่อ Lavalink สำเร็จแล้ว!")
+                logger.info("เชื่อมต่อ Lavalink สำเร็จแล้ว บอทเพลงพร้อมใช้งาน!")
             except Exception as e:
                 logger.error(f"ไม่สามารถเชื่อมต่อ Lavalink ได้เนื่องจาก: {e}")
 
-        # สั่งให้ทำงานเบื้องหลังทันที บอทหลักจะได้รันต่อได้ไม่โดนยื้อเวลา
         self.loop.create_task(connect_lavalink())
         
         # Sync คำสั่งไปยังเซิร์ฟเวอร์ของคุณ
@@ -42,16 +42,19 @@ class MusicBot(commands.Bot):
 
 bot = MusicBot()
 
+# --- ระบบคิวอัตโนมัติ เล่นเพลงต่อไปเรื่อยๆ ---
 @bot.listen()
 async def on_wavelink_track_end(payload: wavelink.TrackEndEventPayload):
     player = payload.player
     if not player:
         return
 
+    # ถ้ายังมีเพลงเหลืออยู่ในคิว
     if not player.queue.is_empty:
         next_track = player.queue.get()
         await player.play(next_track)
         
+        # ส่ง Embed บอกเพลงถัดไปในห้องแชทล่าสุด
         if hasattr(player, "home_channel") and player.home_channel:
             embed = discord.Embed(
                 title="🎵 กำลังเล่นเพลงถัดไป", 
