@@ -3,8 +3,9 @@ import os
 from discord.ext import commands
 import asyncio
 import yt_dlp
-from aiohttp import web
 import logging
+from http.server import BaseHTTPRequestHandler, HTTPServer
+import threading
 
 # เปิดใช้งานการบันทึก Log
 logging.basicConfig(level=logging.INFO)
@@ -16,23 +17,8 @@ intents.message_content = True
 class MusicBot(commands.Bot):
     def __init__(self):
         super().__init__(command_prefix="!", intents=intents)
-        # สร้างระบบคิวเพลงเก็บไว้ในตัวบอท
-        self.queues = {} 
 
     async def setup_hook(self):
-        # เปิด Web Server เพื่อรองรับระบบ Health Check ของ Railway บอทจะได้ไม่ดับ
-        async def web_server():
-            app = web.Application()
-            app.router.add_get('/', lambda r: web.Response(text="Bot is running!"))
-            runner = web.AppRunner(app)
-            await runner.setup()
-            port = int(os.getenv("PORT", 8080))
-            site = web.TCPSite(runner, '0.0.0.0', port)
-            await site.start()
-            logger.info(f"Web server started on port {port} for Railway")
-
-        self.loop.create_task(web_server())
-        
         # Sync คำสั่งสแลช (Slash Commands)
         MY_GUILD_ID = discord.Object(id=1204647300870311986) 
         self.tree.copy_global_to(guild=MY_GUILD_ID)
@@ -41,7 +27,30 @@ class MusicBot(commands.Bot):
 
 bot = MusicBot()
 
-# ตั้งค่า yt-dlp สำหรับดึงเสียงจาก YouTube
+# --- 🌐 ระบบ Web Server สำหรับหลอก Railway Health Check (แก้ไขพอร์ตให้เสถียร) ---
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        self.wfile.write(b"Bot is online and healthy!")
+        
+    def log_message(self, format, *args):
+        # ปิด log หน้าเว็บเพื่อไม่ให้รกหน้าคอนโซลหลัก
+        return
+
+def run_health_check_server():
+    # ดึงค่า PORT ที่ Railway บังคับส่งมาให้ ถ้าไม่มีจะใช้พอร์ต 8080
+    port = int(os.getenv("PORT", 8080))
+    server = HTTPServer(("0.0.0.0", port), HealthCheckHandler)
+    logger.info(f"Railway Health Check Server running on port {port}")
+    server.serve_forever()
+
+# สั่งให้ Web Server ทำงานแยกอีก Thread หนึ่งทันทีตั้งแต่เริ่มรันโปรแกรม
+threading.Thread(target=run_health_check_server, daemon=True).start()
+
+
+# --- 🎵 ระบบตั้งค่าเครื่องเล่นเพลง (yt-dlp + FFmpeg) ---
 YTDL_OPTIONS = {
     'format': 'bestaudio/best',
     'noplaylist': True,
@@ -55,24 +64,21 @@ FFMPEG_OPTIONS = {
 }
 
 ytdl = yt_dlp.YoutubeDL(YTDL_OPTIONS)
+bot.queues_data = {}
 
-# ฟังก์ชันจัดการเล่นเพลงถัดไปในคิวอัตโนมัติ
-def play_next(ctx_or_interaction, guild_id):
+def play_next(interaction, guild_id):
     if guild_id in bot.queues_data and bot.queues_data[guild_id]:
         next_track = bot.queues_data[guild_id].pop(0)
-        vc = ctx_or_interaction.guild.voice_client
+        vc = interaction.guild.voice_client
         if vc and vc.is_connected():
             vc.play(discord.FFmpegPCMAudio(next_track['url'], **FFMPEG_OPTIONS), 
-                    after=lambda e: play_next(ctx_or_interaction, guild_id))
+                    after=lambda e: play_next(interaction, guild_id))
             
-            # ส่งข้อความแจ้งเตือนเพลงถัดไป
             coro = next_track['channel'].send(
                 embed=discord.Embed(title="🎵 กำลังเล่นเพลงถัดไป", description=f"**{next_track['title']}**", color=discord.Color.green()),
                 view=MusicControlView()
             )
             asyncio.run_coroutine_threadsafe(coro, bot.loop)
-
-bot.queues_data = {}
 
 class MusicControlView(discord.ui.View):
     def __init__(self):
@@ -111,7 +117,6 @@ async def play(interaction: discord.Interaction, query: str):
     if guild_id not in bot.queues_data:
         bot.queues_data[guild_id] = []
 
-    # ค้นหาและดึงข้อมูลเพลง
     loop = asyncio.get_event_loop()
     try:
         data = await loop.run_in_executor(None, lambda: ytdl.extract_info(query, download=False))
@@ -149,4 +154,5 @@ async def play(interaction: discord.Interaction, query: str):
         )
         await interaction.followup.send(embed=embed, view=MusicControlView())
 
+# รันบอทหลัก
 bot.run(os.getenv("DISCORD_TOKEN"))
