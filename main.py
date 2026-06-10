@@ -1,3 +1,5 @@
+import time
+import threading
 import discord
 from discord.interactions import Interaction
 import requests
@@ -237,3 +239,8 @@ async def on_message(message):
             print(f"เกิดข้อผิดพลาด: {e}")
 
 client.run(os.getenv('DISCORD_TOKEN'))
+def keep_alive():
+    while True:
+        time.sleep(3600)
+
+threading.Thread(target=keep_alive, daemon=True).start()
