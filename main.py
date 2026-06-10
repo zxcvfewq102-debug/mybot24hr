@@ -246,6 +246,5 @@ def keep_alive():
 import threading
 threading.Thread(target=keep_alive, daemon=True).start()
 
-
-# 2. เอาคำสั่งรันบอตมาไว้ "บรรทัดสุดท้ายสุดของไฟล์" เสมอ
-ลูกทีม.วิ่ง(os.getenv('DISCORD_TOKEN'))
+# สั่งรันบอตด้วยคำสั่งภาษาอังกฤษมาตรฐาน (ห้ามใช้คำว่า ลูกทีม.วิ่ง)
+client.run(os.getenv('DISCORD_TOKEN'))
