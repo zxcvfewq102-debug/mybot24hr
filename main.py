@@ -236,4 +236,4 @@ async def on_message(message):
         except Exception as e:
             print(f"เกิดข้อผิดพลาด: {e}")
 
-client.run(token)
+client.run(os.getenv('DISCORD_TOKEN'))
