@@ -238,9 +238,14 @@ async def on_message(message):
         except Exception as e:
             print(f"เกิดข้อผิดพลาด: {e}")
 
-client.run(os.getenv('DISCORD_TOKEN'))
 def keep_alive():
+    import time
     while True:
         time.sleep(3600)
 
+import threading
 threading.Thread(target=keep_alive, daemon=True).start()
+
+
+# 2. เอาคำสั่งรันบอตมาไว้ "บรรทัดสุดท้ายสุดของไฟล์" เสมอ
+ลูกทีม.วิ่ง(os.getenv('DISCORD_TOKEN'))
