@@ -62,3 +62,4 @@ async def play_next(interaction):
         vc.play(player, after=lambda e: asyncio.run_coroutine_threadsafe(play_next(interaction), bot.loop))
 
 bot.run('YOUR_BOT_TOKEN_HERE')
+os.getenv('TOKEN')
