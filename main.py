@@ -61,5 +61,6 @@ async def play_next(interaction):
         if not vc: vc = await interaction.user.voice.channel.connect()
         vc.play(player, after=lambda e: asyncio.run_coroutine_threadsafe(play_next(interaction), bot.loop))
 
-bot.run('YOUR_BOT_TOKEN_HERE')
-os.getenv('TOKEN')
+import os
+# บรรทัดนี้จะดึงค่า Token จากตัวแปรสภาพแวดล้อมที่ตั้งไว้ใน Railway
+bot.run(os.getenv('TOKEN'))
