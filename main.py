@@ -923,4 +923,6 @@ async def on_voice_state_update(member, before, after):
 
 if __name__ == "__main__":
     TOKEN = '' 
-    bot.run(TOKEN)
+    
+load_dotenv()
+bot.run(os.getenv('TOKEN'))
