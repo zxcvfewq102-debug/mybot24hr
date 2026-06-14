@@ -1,5 +1,4 @@
 discord.py[voice]
-nextcord
 yt-dlp
 requests
 python-dotenv
