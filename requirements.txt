@@ -7,3 +7,4 @@ PyNaCl
 wavelink>=3.0.0
 aiohttp
 beautifulsoup4
+nextcord
