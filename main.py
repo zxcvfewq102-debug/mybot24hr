@@ -30,5 +30,5 @@ async def on_voice_state_update(member, before, after):
 
 import os
 # ... โค้ดอื่น ๆ ...
-bot.run(os.getenv("TOKEN"))  # หรือ os.environ.get('TOKEN')
+bot.run(os.getenv("TOKEN"))
 
