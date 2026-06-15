@@ -29,6 +29,6 @@ async def on_voice_state_update(member, before, after):
         print(f'{member.name} is in {after.channel.name} and started speaking.')
 
 import os
-# ... โค้ดอื่น ๆ ...
-bot.run(os.getenv("TOKEN"))
+bot.run(os.getenv("DISCORD_TOKEN"))
+
 
