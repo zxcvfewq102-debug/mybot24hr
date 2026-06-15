@@ -28,4 +28,7 @@ async def on_voice_state_update(member, before, after):
     if after.channel and after.self_stream:
         print(f'{member.name} is in {after.channel.name} and started speaking.')
 
-bot.run()
+import os
+# ... โค้ดอื่น ๆ ...
+bot.run(os.getenv("TOKEN"))  # หรือ os.environ.get('TOKEN')
+
